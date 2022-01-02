@@ -1,7 +1,5 @@
-cd \
-cd D:\Python\Learning-Python\Personal projects\DiscordShrinker\
+cd D:
+cd D:\Git_Repos\DiscordShrinker
 mkdir tmp
 python3 main.py %1
-rem cd D:\Python\Learning-Python\Personal projects\DiscordShrinker\tmp
-rem del . /s /q
-pause
+rmdir .\tmp /s /q
