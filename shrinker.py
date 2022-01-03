@@ -54,13 +54,13 @@ def determine_target_bitrate(video_metadata, audio_metadata):
 def process_video(file_names, video_metadata, audio_metadata, bitrate, output, output_path):
     if not video_metadata:
         subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["video_only"]}" -y -b:v {bitrate} ".\\tmp\\{file_names["changed_bitrate"]}"')
-        subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["changed_bitrate"]}" -i ".\\tmp\\{file_names["audio_only"]}" -c copy "{output_path + output}"')
+        subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["changed_bitrate"]}" -i ".\\tmp\\{file_names["audio_only"]}" -y -c copy "{output_path + output}"')
     elif video_metadata:
         if int(video_metadata['format']['size']) + int(audio_metadata['format']['size']) > FILE_SIZE_LIMIT_IN_BYTES:
             subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["video_only"]}" -y -b:v {bitrate} ".\\tmp\\{file_names["changed_bitrate"]}"')
-            subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["changed_bitrate"]}" -i ".\\tmp\\{file_names["audio_only"]}" -c copy "{output_path + output}"')
+            subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["changed_bitrate"]}" -i ".\\tmp\\{file_names["audio_only"]}" -y -c copy "{output_path + output}"')
         else:
-            subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["rescaled"]}" -i ".\\tmp\\{file_names["audio_only"]}" -c copy "{output_path + output}"')
+            subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["rescaled"]}" -i ".\\tmp\\{file_names["audio_only"]}" -y -c copy "{output_path + output}"')
 
 
 
