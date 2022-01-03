@@ -1,5 +1,6 @@
 import subprocess
 import json
+import math
 import sys
 
 
@@ -46,7 +47,7 @@ def rescale_video(file_name, output, video_metadata):
 
 def determine_target_bitrate(video_metadata, audio_metadata):
     reduction_coeff = int(video_metadata['format']['size']) / (FILE_SIZE_LIMIT_IN_BYTES - int(audio_metadata['format']['size']))
-    target_bitrate = int(video_metadata['streams'][0]['bit_rate']) / reduction_coeff
+    target_bitrate = int(video_metadata['streams'][0]['bit_rate']) / math.ceil(reduction_coeff)
 
     return target_bitrate
 
