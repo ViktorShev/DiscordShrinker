@@ -63,9 +63,6 @@ def process_video(file_names, video_metadata, audio_metadata, bitrate, output, o
             subprocess.run(f'.\\ffmpeg.exe -i ".\\tmp\\{file_names["rescaled"]}" -i ".\\tmp\\{file_names["audio_only"]}" -y -c copy "{output_path + output}"')
 
 
-
-
-
 file_path = get_file_path()
 file_name = get_file_name()
 file_names = get_file_endings(file_name)
