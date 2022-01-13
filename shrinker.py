@@ -35,6 +35,7 @@ def check_file_size(video_data, audio_data):
         print('\n\nFile is already under 8MB!')
         time.sleep(2)
         sys.exit(0)
+        
 
 def split_video(file_path, output):
     subprocess.run(f'.\\ffmpeg.exe -i "{file_path}" -y -c:v copy -an ".\\tmp\\{output["video_only"]}" -c:a copy -vn ".\\tmp\\{output["audio_only"]}"')
