@@ -1,4 +1,4 @@
-cd D:
+cd \
 cd D:\Git_Repos\DiscordShrinker
 mkdir tmp
 python3 shrinker.py %1
