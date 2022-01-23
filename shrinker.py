@@ -61,12 +61,12 @@ def determine_target_bitrate(video_file_path, audio_file_path):
     return target_bitrate
 
 
-def change_bitrate(file_path, output_path, output_file, target_bitrate):
-    subprocess.run(f'.\\ffmpeg.exe -i "{file_path}" -y -b:v {target_bitrate} -maxrate:v {target_bitrate} -bufsize 4M "{output_path + output_file}"')
+def change_bitrate(file_path, output_path, output_file_name, target_bitrate):
+    subprocess.run(f'.\\ffmpeg.exe -i "{file_path}" -y -b:v {target_bitrate} -maxrate:v {target_bitrate} -bufsize 4M "{output_path + output_file_name}"')
 
 
 def return_compressed_video(file_path, output_path, output_file_name):
-    subprocess.run(f'.\\fmpeg.exe -i "{file_path}" -y -c copy "{output_path + output_file_name}"')
+    subprocess.run(f'.\\ffmpeg.exe -i "{file_path}" -y -c copy "{output_path + output_file_name}"')
 
 
 def main():
@@ -99,7 +99,7 @@ def main():
         target_bitrate = determine_target_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\audio_only.mp4')
         change_bitrate('.\\tmp\\merged.mp4', original_file_path, '_8mb.mp4', target_bitrate)
     else:
-        return_compressed_video('.\\tmp\\rescaled_video.mp4', original_file_path, '_8mb.mp4')
+        return_compressed_video('.\\tmp\\merged.mp4', original_file_path, '_8mb.mp4')
 
 
 main()
