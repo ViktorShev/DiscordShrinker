@@ -77,7 +77,6 @@ def main():
             print('\nFILE IS ALREADY UNDER 8MB!')
             time.sleep(2)
             sys.exit(0)
-
     except KeyError as e:
         print('\nINVALID FILE FORMAT.')
         time.sleep(2)
