@@ -52,7 +52,7 @@ def main():
 
     try:
         if check_file_size(original_file_path) == '<8mb':
-            print('\nFILE IS ALREADY UNDER 8MB!')
+            print('\nFILE IS ALREADY UNDER 8MB.')
             time.sleep(2)
             sys.exit(0)
     except KeyError as e:
