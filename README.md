@@ -4,7 +4,7 @@ Compress video files to Discord's 8 megabyte file size limit.
 
 # Installation guide:
 
-1. Move the DiscordShrinker folder to the root of your C: drive.
+1. Move the "DiscordShrinker" folder to the root of your C: drive.
 
 2. Double click the Python installer and install Python.
 
