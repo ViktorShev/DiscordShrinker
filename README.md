@@ -1,5 +1,5 @@
 # Discord Shrinker
-Compress video files to Discord's 8MB file size limit.
+Compress video files to Discord's 8 megabyte file size limit.
 
 
 # Installation and usage guide:
