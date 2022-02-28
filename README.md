@@ -18,4 +18,4 @@ Just go onto the video's location and right click the video you wish to compress
 
 You can download my program here: https://mega.nz/folder/AdIwCLSB#pJ-XyKDCYsOmIrauP3vSmw
 
-_If you need the decryption key:_ pJ-XyKDCYsOmIrauP3vSmw
+_Decryption key:_ pJ-XyKDCYsOmIrauP3vSmw
