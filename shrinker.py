@@ -66,4 +66,5 @@ def main():
     change_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\', 'changed_bitrate.mp4', target_bitrate)
     merge_video('.\\tmp\\changed_bitrate.mp4', '.\\tmp\\audio_only.mp4', original_file_path, '_8mb.mp4')
 
+
 main()
