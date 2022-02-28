@@ -1,5 +1,4 @@
-cd \
-cd D:\Git_Repos\DiscordShrinker
+cd /d C:\DiscordShrinker
 mkdir tmp
 py shrinker.py %1
 rmdir .\tmp /s /q
