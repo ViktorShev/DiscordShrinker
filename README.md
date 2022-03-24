@@ -4,11 +4,15 @@ Compress video files to Discord's 8 megabyte file size limit.
 
 # Installation guide:
 
-1. Move the "DiscordShrinker" folder to the root of your C: drive.
+1. Go to the mega.nz link at the bottom and click on "Download as zip file" at the top right.
 
-2. Double click the Python installer and install Python.
+2. Once downloaded extract the contents of the zip file.
 
-3. Double click on the .reg file to set up the right click option of "Shrink for Discord" when right-clicking a file.
+3. Move the "DiscordShrinker" folder to the root of your C: drive.
+
+4. Double click the Python installer and install Python.
+
+5. Double click on the .reg file to set up the right click option of "Shrink for Discord" when right-clicking a file.
 
 # Usage guide:
 
