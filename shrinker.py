@@ -4,7 +4,7 @@ import time
 import sys
 
 
-FILE_SIZE_LIMIT_IN_BYTES = 8388608 # 8 * 1024 * 1024
+FILE_SIZE_LIMIT_IN_BYTES = 26214400 # 25 * 1024 * 1024
 
 def get_file_path():
 
@@ -21,9 +21,9 @@ def get_data(file_path):
 def check_file_size(file_path):
     data = get_data(file_path)
     if int(data['format']['size']) < FILE_SIZE_LIMIT_IN_BYTES:
-        return '<8mb'
+        return '<25mb'
 
-    return '>8mb'
+    return '>25mb'
 
 
 def split_video(file_path, output_path, output_file_video, output_file_audio):
@@ -51,8 +51,8 @@ def main():
     original_file_path = get_file_path()
 
     try:
-        if check_file_size(original_file_path) == '<8mb':
-            print('\nFILE IS ALREADY UNDER 8MB.')
+        if check_file_size(original_file_path) == '<25mb':
+            print('\nFILE IS ALREADY UNDER 25MB.')
             time.sleep(2)
             sys.exit(0)
     except KeyError as e:
@@ -64,7 +64,6 @@ def main():
 
     target_bitrate = determine_target_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\audio_only.mp4')
     change_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\', 'changed_bitrate.mp4', target_bitrate)
-    merge_video('.\\tmp\\changed_bitrate.mp4', '.\\tmp\\audio_only.mp4', original_file_path, '_8mb.mp4')
-
+    merge_video('.\\tmp\\changed_bitrate.mp4', '.\\tmp\\audio_only.mp4', original_file_path, '_25mb.mp4')
 
 main()
