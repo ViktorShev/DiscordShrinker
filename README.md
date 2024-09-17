@@ -11,7 +11,7 @@ Compress video files to Discord's 10 megabyte file size limit.
 3. Double click on the `register_right_click_option.reg` file to set up an option on the Windows right-click menu in order to use this script
 
 ---
-_Note: This script requires Python to be installed, which you can get [here](https://www.python.org/downloads/). The download link provided already ships with a FFMPEG executable_
+_Note: This script requires Python to be installed, which you can get [here](https://www.python.org/downloads/). The download link provided already ships with an FFMPEG executable_
 
 
 # Usage guide
