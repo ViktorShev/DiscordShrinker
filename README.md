@@ -12,4 +12,4 @@ Compress video files to Discord's 10 megabyte file size limit.
 
 # Usage guide:
 
-Just right click whatever video you wish to compress to 10 megabytes, select "Shrink for Discord", wait for the program to finish (Do not close the command line) and done!
+Just right click whatever video you wish to compress to 10 megabytes, click on "Shrink for Discord", wait for the program to finish (Do not close the command line) and done!
