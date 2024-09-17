@@ -8,9 +8,11 @@ Compress video files to Discord's 10 megabyte file size limit.
    
 2. Unzip the `DiscordShrinker.rar` file.
 
-3. Move the `DiscordShrinker` folder to the root of your `C:` drive.
+4. Move the `DiscordShrinker` folder to the root of your `C:` drive.
 
-4. Double click on the `register_right_click_option.reg` file to set up an option on the Windows right-click menu in order to use this script
+5. Double click on the `register_right_click_option.reg` file to set up an option on the Windows right-click menu in order to use this script
+   
+- :information_source: Alternatively, you can clone this repository to get the contents.
 
 ---
 _Note: This script requires Python to be installed, which you can get [here](https://www.python.org/downloads/). The download link provided already ships with an FFMPEG executable_
