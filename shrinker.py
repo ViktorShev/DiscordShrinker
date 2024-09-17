@@ -1,10 +1,13 @@
+from enum import Enum
 import subprocess
 import json
 import time
 import sys
 
 
-FILE_SIZE_LIMIT_IN_BYTES = 26214400 # 25 * 1024 * 1024
+FILE_SIZE_LIMIT_IN_BYTES = 10485760 # 10 * 1024 * 1024
+FILE_SIZE_LIMIT_STR = f'{FILE_SIZE_LIMIT_IN_BYTES // 1024 // 1024}mb'
+FileSizeLimit = Enum('FileSizeLimit', ['OVER', 'UNDER'])
 
 def get_file_path():
 
@@ -21,9 +24,9 @@ def get_data(file_path):
 def check_file_size(file_path):
     data = get_data(file_path)
     if int(data['format']['size']) < FILE_SIZE_LIMIT_IN_BYTES:
-        return '<25mb'
+        return FileSizeLimit.UNDER
 
-    return '>25mb'
+    return FileSizeLimit.OVER
 
 
 def split_video(file_path, output_path, output_file_video, output_file_audio):
@@ -51,12 +54,12 @@ def main():
     original_file_path = get_file_path()
 
     try:
-        if check_file_size(original_file_path) == '<25mb':
-            print('\nFILE IS ALREADY UNDER 25MB.')
+        if check_file_size(original_file_path) == FileSizeLimit.UNDER:
+            print(f'\nFile is already under {FILE_SIZE_LIMIT_STR}.')
             time.sleep(2)
             sys.exit(0)
     except KeyError as e:
-        print('\nINVALID FILE FORMAT.')
+        print('\nInvalid file format.')
         time.sleep(2)
         sys.exit(1)
 
@@ -64,6 +67,7 @@ def main():
 
     target_bitrate = determine_target_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\audio_only.mp4')
     change_bitrate('.\\tmp\\video_only.mp4', '.\\tmp\\', 'changed_bitrate.mp4', target_bitrate)
-    merge_video('.\\tmp\\changed_bitrate.mp4', '.\\tmp\\audio_only.mp4', original_file_path, '_25mb.mp4')
+    merge_video('.\\tmp\\changed_bitrate.mp4', '.\\tmp\\audio_only.mp4', original_file_path, f'_{FILE_SIZE_LIMIT_STR}.mp4')
 
-main()
+if __name__ == "__main__":
+    main()
