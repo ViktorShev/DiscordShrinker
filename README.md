@@ -22,3 +22,5 @@ _Note: This script requires Python to be installed, which you can get [here](htt
 # Usage guide
 
 Just right click whatever video you wish to compress to 10 megabytes, click on "Shrink for Discord", wait for the program to finish _(Do not close the command line)_ and done!
+
+:information_source: Windows 11 users will find the "Shrink for Discord" option by right clicking a file and going on "Show more options".
