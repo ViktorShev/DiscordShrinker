@@ -108,15 +108,16 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   })
 
   try {
-    spin('Two-pass encode: 1 of 2...')
+    spin('Two-pass encoding (pass 1 of 2)...')
     const { stdout, stderr } = await ffmpeg(firstPassArgs)
     debug('Ran first pass:\n', stdout, stderr)
 
-    spin('Two-pass encode: 2 of 2...')
+    spin('Two-pass encoding (pass 2 of 2)...')
     const { stdout: stdout2, stderr: stderr2 } = await ffmpeg(secondPassArgs)
     debug('Ran second pass:\n', stdout2, stderr2)
   } finally {
     try {
+      spin('Cleaning up temporary files...')
       debug('Removing temp directory')
       await rm(tempDirectory, { recursive: true, force: true })
     } catch (cleanupError) {

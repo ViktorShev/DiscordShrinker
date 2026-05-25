@@ -19,13 +19,13 @@ async function main(): Promise<void> {
   if (await isFileUnderLimit(filepath)) {
     spinSuccess(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
     debug(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
-    pause(1000)
+    await pause(2000)
     return
   }
 
   await shrinkVideo(filepath)
   spinSuccess('Video compressed successfully!')
-  await pause(1000)
+  await pause(2000)
 }
 
 main().catch(async error => {
