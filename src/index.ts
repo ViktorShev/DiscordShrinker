@@ -1,13 +1,13 @@
-import { getCLIArgs } from "./utils/cli"
-import { setLoggingEnabled } from "./utils/log"
+import { getCLIArgs } from "./modules/cli"
+import { setLoggingEnabled } from "./modules/log"
 
-import { MAX_FILE_SIZE_STR } from "./utils/constants"
+import { MAX_FILE_SIZE_STR } from "./constants"
 
 import { 
   validateFFmpegSetup, 
   isFileUnderLimit,
   shrinkVideo,
-} from "./utils/ffmpeg"
+} from "./modules/ffmpeg"
 
 
 async function main(): Promise<void> {
