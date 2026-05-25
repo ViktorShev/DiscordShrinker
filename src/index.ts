@@ -3,7 +3,7 @@ import { setLoggingEnabled } from "./modules/log"
 
 import { MAX_FILE_SIZE_STR } from "./constants"
 
-import { isFileUnderLimit } from "./modules/ffmpeg/probe";
+import { isFileUnderLimit } from "./modules/ffmpeg/probe"
 import { 
   validateFFmpegSetup, 
   shrinkVideo,

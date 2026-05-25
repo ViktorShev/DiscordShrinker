@@ -1,9 +1,9 @@
-import { stat } from "fs/promises";
-import { MAX_FILE_SIZE_IN_BYTES } from "../../constants";
-import { log } from "../log";
-import { MAX_AUDIO_BITRATE } from "./encode";
-import { parsePositiveNumber } from "../parsing";
-import { cmd, quoteShellPath } from "../cmd";
+import { stat } from "fs/promises"
+import { MAX_FILE_SIZE_IN_BYTES } from "../../constants"
+import { log } from "../log"
+import { MAX_AUDIO_BITRATE } from "./encode"
+import { parsePositiveNumber } from "../parsing"
+import { cmd, quoteShellPath } from "../cmd"
 
 type ProbeStream = {
   codec_type?: string

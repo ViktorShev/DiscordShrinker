@@ -1,11 +1,11 @@
-import { basename, dirname, extname, join } from "path";
-import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants";
-import { log } from "../log";
-import { mkdtemp, rm, stat } from "fs/promises";
-import { tmpdir } from "os";
-import { cmd, quoteShellPath } from "../cmd";
-import { parsePositiveNumber } from "../parsing";
-import { isFileUnderLimit } from "./probe";
+import { basename, dirname, extname, join } from "path"
+import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants"
+import { log } from "../log"
+import { mkdtemp, rm, stat } from "fs/promises"
+import { tmpdir } from "os"
+import { cmd, quoteShellPath } from "../cmd"
+import { parsePositiveNumber } from "../parsing"
+import { isFileUnderLimit } from "./probe"
 
 export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {
 	const maxBitrate = (TARGET_FILE_SIZE_IN_BYTES * 8) / durationSeconds - audioBitrate
