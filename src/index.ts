@@ -9,8 +9,6 @@ import {
   shrinkVideo,
 } from "./modules/ffmpeg"
 
-
-
 async function main(): Promise<void> {
   await validateFFmpegSetup()
 
