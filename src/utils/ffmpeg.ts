@@ -260,9 +260,9 @@ async function downscale(options: DownscaleOptions): Promise<void> {
 const MAX_TWO_PASS_RETRIES = 3
 
 async function twoPassEncodeUntilSizeLimit(options: TwoPassEncodeOptions): Promise<void> {
-  for (let attempt = 0; attempt < MAX_TWO_PASS_RETRIES; attempt++) {
-    const targetVideoBitrate = options.targetVideoBitrate * (1 - attempt * 0.05) // Reduce target bitrate by an additional 5% with each retry
+  let targetVideoBitrate = options.targetVideoBitrate
 
+  for (let attempt = 0; attempt < MAX_TWO_PASS_RETRIES; attempt++) {
     const adjustedOptions: TwoPassEncodeOptions = {
       ...options,
       targetVideoBitrate,
@@ -275,9 +275,16 @@ async function twoPassEncodeUntilSizeLimit(options: TwoPassEncodeOptions): Promi
     if (await isFileUnderLimit(adjustedOptions.outputFilePath)) {
       log(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}.`)
       return
-    } else {
-      log(`Two-pass attempt ${attempt} resulted in a file that is still too large. Retrying with a lower target bitrate.`)
     }
+
+    const { size: actualSizeBytes } = await stat(adjustedOptions.outputFilePath)
+
+    // Scale the bitrate proportionally to how far over the limit we landed,
+    // then apply an extra 2% safety margin so the next attempt aims slightly
+    // below the hard cap rather than exactly at it.
+    targetVideoBitrate = Math.floor(targetVideoBitrate * (MAX_FILE_SIZE_IN_BYTES / actualSizeBytes) * 0.98)
+
+    log(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}.`)
   }
 
   const errorParts = [
@@ -348,7 +355,7 @@ async function handleDownscaleStrategy(metadata: MediaMetadata): Promise<void> {
       outputFilePath,
       targetAudioBitrate,
       targetVideoBitrate,
-      videoFilterArg: DOWNSCALE_VIDEO_FILTER(1280, 720, 30), // Reduce FPS to 30 as a last resort
+      videoFilterArg: DOWNSCALE_VIDEO_FILTER(1280, 720, 30),
       removeAudio: !metadata.hasAudio,
     })
   }
