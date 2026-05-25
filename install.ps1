@@ -71,15 +71,15 @@ Write-Ok "Files copied."
 
 Write-Step "Adding 'Shrink for Discord' to the right-click menu..."
 
-$ShellKey   = 'HKCU:\Software\Classes\*\shell\ShrinkForDiscord'
-$CommandKey = "$ShellKey\command"
-
-New-Item -Path $ShellKey   -Force | Out-Null
-New-Item -Path $CommandKey -Force | Out-Null
-
-Set-ItemProperty -Path $ShellKey   -Name '(Default)' -Value 'Shrink for Discord'
-Set-ItemProperty -Path $ShellKey   -Name 'Icon'      -Value $IconPath
-Set-ItemProperty -Path $CommandKey -Name '(Default)' -Value "`"$ExePath`" `"%1`""
+$classesKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes', $true)
+$shellKey    = $classesKey.CreateSubKey('*\shell\ShrinkForDiscord')
+$shellKey.SetValue('', 'Shrink for Discord')
+$shellKey.SetValue('Icon', $IconPath)
+$cmdKey = $shellKey.CreateSubKey('command')
+$cmdKey.SetValue('', "`"$ExePath`" `"%1`"")
+$cmdKey.Close()
+$shellKey.Close()
+$classesKey.Close()
 
 Write-Ok "Context menu entry registered."
 
@@ -89,3 +89,5 @@ Write-Host ""
 Write-Host "  All done! Right-click any video file and choose" -ForegroundColor White
 Write-Host "  'Shrink for Discord' to compress it." -ForegroundColor White
 Write-Host ""
+Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
+$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
