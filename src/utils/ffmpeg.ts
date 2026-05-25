@@ -7,6 +7,8 @@ import {
   NULL_DEVICE_PATH,
   REQUIRED_AUDIO_ENCODERS,
   REQUIRED_VIDEO_ENCODERS,
+  TARGET_AUDIO_BITRATE,
+  TARGET_VIDEO_BITRATE,
 } from "./constants"
 import { cmd, quoteShellPath } from "./cmd"
 import { log } from "./log"
@@ -85,7 +87,7 @@ type MediaMetadata = {
   hasAudio: boolean
 }
 
-export async function probeMedia(filePath: string): Promise<MediaMetadata> {
+async function probeMedia(filePath: string): Promise<MediaMetadata> {
   const { stdout } = await cmd(
     `ffprobe -v quiet -print_format json -show_streams -show_format ${quoteShellPath(filePath)}`,
   )
@@ -134,7 +136,7 @@ export async function probeMedia(filePath: string): Promise<MediaMetadata> {
   return metadata
 }
 
-export function buildOutputFilePath(inputFilePath: string): string {
+function buildOutputFilePath(inputFilePath: string): string {
   const inputDirectory = dirname(inputFilePath)
   const inputExtension = extname(inputFilePath)
   const inputBaseName = basename(inputFilePath, inputExtension)
@@ -146,16 +148,24 @@ export function buildOutputFilePath(inputFilePath: string): string {
   return outFilePath
 }
 
+async function makeTempDirectory(): Promise<string> {
+  const tempDirectory = await mkdtemp(join(tmpdir(), 'discordshrinker-'))
+  log('Created temporary directory:', tempDirectory)
+
+  return tempDirectory
+} 
+
 type TwoPassEncodeOptions = {
   inputFilePath: string
   outputFilePath: string
   targetVideoBitrate: number
   targetAudioBitrate: number
+  videoFilterArg?: string
   removeAudio: boolean
 }
 
 async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
-  const tempDirectory = await mkdtemp(join(tmpdir(), 'discordshrinker-'))
+  const tempDirectory = await makeTempDirectory()
   const passLogFile = join(tempDirectory, 'ffmpeg2pass')
 
   const inputPath = quoteShellPath(options.inputFilePath)
@@ -174,8 +184,9 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
     `-i ${inputPath}`,
     '-c:v libsvtav1',
     `-b:v ${targetVideoBitrate}`,
+    options.videoFilterArg ? `-vf ${options.videoFilterArg}` : undefined,
     `-passlogfile ${passLogPath}`,
-  ].join(' ')
+  ].filter(Boolean).join(' ')
 
   const firstPassCommand = `${sharedArgs} -pass 1 -an -f null ${NULL_DEVICE_PATH}`
 
@@ -192,14 +203,18 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   })
 
   try {
-    log('Running first pass...')
-    await cmd(firstPassCommand)
+    const { stdout, stderr } = await cmd(firstPassCommand)
+    log('Ran first pass', stdout, stderr)
 
-    log('Running second pass...')
-    await cmd(secondPassCommand)
+    const { stdout: stdout2, stderr: stderr2 } = await cmd(secondPassCommand)
+    log('Ran second pass', stdout2, stderr2)
   } finally {
-    log('Removing temp directory...')
-    await rm(tempDirectory, { recursive: true, force: true })
+    try {
+      log('Cleaning up temporary files...')
+      await rm(tempDirectory, { recursive: true, force: true })
+    } catch (cleanupError) {
+      log('Failed to clean up temporary files:', cleanupError)
+    }
   }
 }
 
@@ -211,19 +226,23 @@ type DownscaleOptions = {
   targetFps?: number
 }
 
+function DOWNSCALE_VIDEO_FILTER(targetWidth: number, targetHeight: number, targetFps?: number): string {
+  const filters = [
+    `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2`
+  ]
+
+  if (targetFps) {
+    filters.push(`fps=${targetFps}`)
+  }
+
+  return filters.join(',')
+}
+
 async function downscale(options: DownscaleOptions): Promise<void> {
   const inputPath = quoteShellPath(options.inputFilePath)
   const outputPath = quoteShellPath(options.outputFilePath)
 
-  const filters = [
-    `scale=${options.targetWidth}:${options.targetHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2`
-  ]
-
-  if (options.targetFps) {
-    filters.push(`fps=${options.targetFps}`)
-  }
-
-  const videoFilterArg = filters.join(',')
+  const videoFilterArg = DOWNSCALE_VIDEO_FILTER(options.targetWidth, options.targetHeight, options.targetFps)
 
   const command = [
     'ffmpeg -y',
@@ -238,14 +257,111 @@ async function downscale(options: DownscaleOptions): Promise<void> {
   await cmd(command)
 }
 
-const ONLY_TWO_PASS_MAX_DURATION_SECONDS = 30
+const MAX_TWO_PASS_RETRIES = 3
 
-export enum CompressionStrategy {
+async function twoPassEncodeUntilSizeLimit(options: TwoPassEncodeOptions): Promise<void> {
+  for (let attempt = 0; attempt < MAX_TWO_PASS_RETRIES; attempt++) {
+    const targetVideoBitrate = options.targetVideoBitrate * (1 - attempt * 0.05) // Reduce target bitrate by an additional 5% with each retry
+
+    const adjustedOptions: TwoPassEncodeOptions = {
+      ...options,
+      targetVideoBitrate,
+    }
+
+    log(`Two pass attempt ${attempt} with options:`, adjustedOptions)
+
+    await twoPassEncode(adjustedOptions)
+
+    if (await isFileUnderLimit(adjustedOptions.outputFilePath)) {
+      log(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}.`)
+      return
+    } else {
+      log(`Two-pass attempt ${attempt} resulted in a file that is still too large. Retrying with a lower target bitrate.`)
+    }
+  }
+
+  const errorParts = [
+    `Failed to compress video under the file size limit after ${MAX_TWO_PASS_RETRIES} two-pass attempts.`,
+    'File may be too complex to be feasibly compressed while maintaining reasonable quality.',
+    'Consider manually compressing the file using a different tool.'
+  ]
+
+  throw new Error(errorParts.join('\n'))
+}
+
+async function handleTwoPassOnlyStrategy(metadata: MediaMetadata): Promise<void> {
+  const inputFilePath = metadata.filePath
+  const outputFilePath = buildOutputFilePath(inputFilePath)
+  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, metadata.audioBitrate)
+  const targetAudioBitrate = TARGET_AUDIO_BITRATE(metadata.audioBitrate)
+
+  await twoPassEncodeUntilSizeLimit({
+    inputFilePath,
+    outputFilePath,
+    targetAudioBitrate,
+    targetVideoBitrate,
+    removeAudio: !metadata.hasAudio,
+  })
+}
+
+async function handleDownscaleStrategy(metadata: MediaMetadata): Promise<void> {
+  const inputFilePath = metadata.filePath
+  const outputFilePath = buildOutputFilePath(inputFilePath)
+
+  // Best case scenario, we just need to downscale without re-encoding
+  await downscale({
+    inputFilePath,
+    outputFilePath,
+    targetWidth: 1280,
+    targetHeight: 720,
+  })
+
+  if (await isFileUnderLimit(outputFilePath)) {
+    log('Successfully compressed video under file size limit by downscaling alone.')
+    return
+  }
+
+  // If downscaling alone wasn't enough, we run two pass encoding with retries + downscaling
+  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, metadata.audioBitrate)
+  const targetAudioBitrate = TARGET_AUDIO_BITRATE(metadata.audioBitrate)
+
+  let shouldReduceFps = false
+
+  try {
+    await twoPassEncodeUntilSizeLimit({
+      inputFilePath,
+      outputFilePath,
+      targetAudioBitrate,
+      targetVideoBitrate,
+      videoFilterArg: DOWNSCALE_VIDEO_FILTER(1280, 720),
+      removeAudio: !metadata.hasAudio,
+    })
+  } catch (error) {
+    log('Two-pass encoding with downscaling did not achieve the desired file size. Retrying with reduced FPS...')
+    shouldReduceFps = true
+  }
+
+  // Worst case scenario, we also reduce FPS to 30 in addition to downscaling and bitrate reduction
+  if (shouldReduceFps) {
+    await twoPassEncodeUntilSizeLimit({
+      inputFilePath,
+      outputFilePath,
+      targetAudioBitrate,
+      targetVideoBitrate,
+      videoFilterArg: DOWNSCALE_VIDEO_FILTER(1280, 720, 30), // Reduce FPS to 30 as a last resort
+      removeAudio: !metadata.hasAudio,
+    })
+  }
+}
+
+enum CompressionStrategy {
   TwoPassOnly = 'two-pass-only',
   Downscale = 'downscale',
 }
 
-export async function determineCompressionStrategy(videoDurationSeconds: number): Promise<CompressionStrategy> {
+const ONLY_TWO_PASS_MAX_DURATION_SECONDS = 30
+
+async function determineCompressionStrategy(videoDurationSeconds: number): Promise<CompressionStrategy> {
   if (videoDurationSeconds <= ONLY_TWO_PASS_MAX_DURATION_SECONDS) {
     return CompressionStrategy.TwoPassOnly
   }
@@ -253,9 +369,9 @@ export async function determineCompressionStrategy(videoDurationSeconds: number)
   return CompressionStrategy.Downscale
 }
 
-export const CompressionStrategyToHandler = {
-  [CompressionStrategy.TwoPassOnly]: (_metadata: MediaMetadata) => {}, // handleTwoPassOnlyStrategy,
-  [CompressionStrategy.Downscale]: (_metadata: MediaMetadata) => {} // handleDownscaleStrategy,
+const CompressionStrategyToHandler = {
+  [CompressionStrategy.TwoPassOnly]: handleTwoPassOnlyStrategy,
+  [CompressionStrategy.Downscale]: handleDownscaleStrategy,
 }
 
 export async function shrinkVideo(filePath: string): Promise<void> {
