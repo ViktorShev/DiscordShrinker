@@ -5,7 +5,7 @@ import { spin } from "../spinner"
 import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
 import { ffmpeg } from "../cmd"
-import { safeNumber } from "../parsing"
+import { safeNumber } from "../misc"
 import { isFileUnderLimit } from "./probe"
 
 export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {

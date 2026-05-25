@@ -2,7 +2,7 @@ import { stat } from "fs/promises"
 import { MAX_FILE_SIZE_IN_BYTES } from "../../constants"
 import { debug } from "../log"
 import { MAX_AUDIO_BITRATE } from "./encode"
-import { safeNumber } from "../parsing"
+import { safeNumber } from "../misc"
 import { ffprobe } from "../cmd"
 
 type ProbeStream = {

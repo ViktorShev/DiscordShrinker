@@ -11,3 +11,7 @@ export function safeNumber(value: string | number | undefined, fallback = 0): nu
 
   return parsedValue
 }
+
+export async function pause(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
