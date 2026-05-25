@@ -2,17 +2,32 @@ import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
 import { basename, dirname, extname, join } from "path"
 import {
-  MAX_AUDIO_BITRATE,
   MAX_FILE_SIZE_IN_BYTES,
   NULL_DEVICE_PATH,
   REQUIRED_AUDIO_ENCODERS,
   REQUIRED_VIDEO_ENCODERS,
-  TARGET_AUDIO_BITRATE,
-  TARGET_VIDEO_BITRATE,
+  TARGET_FILE_SIZE_IN_BYTES,
 } from "./constants"
 import { cmd, quoteShellPath } from "./cmd"
 import { log } from "./log"
 import { parsePositiveNumber } from "./parsing"
+
+
+function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {
+	const maxBitrate = (TARGET_FILE_SIZE_IN_BYTES * 8) / durationSeconds - audioBitrate
+
+  return Math.floor(maxBitrate * 0.95) // Reduce target bitrate by 5% as a safety margin for bitrate fluctuations
+}
+
+function RETRY_TARGET_VIDEO_BITRATE(previousBitrate: number, actualSizeBytes: number): number {
+  return Math.floor(previousBitrate * (MAX_FILE_SIZE_IN_BYTES / actualSizeBytes) * 0.98) // Scale bitrate proportionally to how far over the limit we landed, then apply an extra 2% safety margin
+}
+
+const MAX_AUDIO_BITRATE = 96000
+
+function TARGET_AUDIO_BITRATE(currentBitrate: number): number {
+  return Math.min(currentBitrate, MAX_AUDIO_BITRATE)
+}
 
 async function ensureFFmpegAvailable(): Promise<void> {
   const { stdout: ffmpegVersion } = await cmd('ffmpeg -version')
@@ -279,10 +294,7 @@ async function twoPassEncodeUntilSizeLimit(options: TwoPassEncodeOptions): Promi
 
     const { size: actualSizeBytes } = await stat(adjustedOptions.outputFilePath)
 
-    // Scale the bitrate proportionally to how far over the limit we landed,
-    // then apply an extra 2% safety margin so the next attempt aims slightly
-    // below the hard cap rather than exactly at it.
-    targetVideoBitrate = Math.floor(targetVideoBitrate * (MAX_FILE_SIZE_IN_BYTES / actualSizeBytes) * 0.98)
+    targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes)
 
     log(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}.`)
   }
