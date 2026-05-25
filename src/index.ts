@@ -19,6 +19,7 @@ async function main(): Promise<void> {
   if (await isFileUnderLimit(filepath)) {
     spinSuccess(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
     debug(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
+    pause(1000)
     return
   }
 
