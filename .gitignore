@@ -5,6 +5,8 @@ node_modules
 out
 dist
 *.tgz
+*.map
+DiscordShrinker.exe
 
 # code coverage
 coverage

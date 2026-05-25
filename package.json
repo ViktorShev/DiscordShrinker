@@ -9,6 +9,9 @@
   },
   "private": true,
   "type": "module",
+  "scripts": {
+    "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile DiscordShrinker"
+  },
   "dependencies": {
     "yocto-spinner": "^1.2.0"
   }
