@@ -1,11 +1,11 @@
-let loggingEnabled = false
+let debugEnabled = false
 
-export function setLoggingEnabled(enabled: boolean): void {
-  loggingEnabled = enabled
+export function setDebugEnabled(enabled: boolean): void {
+  debugEnabled = enabled
 }
 
-export function log(...args: any[]): void {
-  if (!loggingEnabled) return
+export function debug(...args: any[]): void {
+  if (!debugEnabled) return
 
-  console.log(...args)
+  console.debug(...args)
 }

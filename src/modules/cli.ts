@@ -1,6 +1,6 @@
 type CLIArgs = {
   filepath: string // Filepath
-  logDebugInfo: boolean // Log debug info and FFmpeg output
+  debugEnabled: boolean // Log debug info and FFmpeg output
 }
 
 export function getCLIArgs(): CLIArgs {
@@ -13,7 +13,7 @@ export function getCLIArgs(): CLIArgs {
 
   const flags = args.slice(1)
 
-  const logDebugInfo = flags.includes('--debug')
+  const debugEnabled = flags.includes('--debug')
 
-  return { filepath, logDebugInfo }
+  return { filepath, debugEnabled }
 }

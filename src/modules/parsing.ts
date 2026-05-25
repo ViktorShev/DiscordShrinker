@@ -1,4 +1,4 @@
-export function parsePositiveNumber(value: string | number | undefined, fallback = 0): number {
+export function safeNumber(value: string | number | undefined, fallback = 0): number {
   if (!value) {
     return fallback
   }

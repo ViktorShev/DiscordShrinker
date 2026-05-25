@@ -1,9 +1,9 @@
 import { stat } from "fs/promises"
 import { MAX_FILE_SIZE_IN_BYTES } from "../../constants"
-import { log } from "../log"
+import { debug } from "../log"
 import { MAX_AUDIO_BITRATE } from "./encode"
-import { parsePositiveNumber } from "../parsing"
-import { cmd, quoteShellPath } from "../cmd"
+import { safeNumber } from "../parsing"
+import { ffprobe } from "../cmd"
 
 type ProbeStream = {
   codec_type?: string
@@ -37,16 +37,14 @@ export type MediaMetadata = {
 }
 
 export async function probeMedia(filePath: string): Promise<MediaMetadata> {
-  const { stdout } = await cmd(
-    `ffprobe -v quiet -print_format json -show_streams -show_format ${quoteShellPath(filePath)}`,
-  )
+  const { stdout } = await ffprobe(['-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', filePath])
 
   const data = JSON.parse(stdout) as ProbeData
 
-  log('Probe raw output data:', data)
+  debug('FFprobe raw output data:', data)
 
-  const durationSeconds = parsePositiveNumber(data.format?.duration)
-  const fileSizeBytes = parsePositiveNumber(data.format?.size)
+  const durationSeconds = safeNumber(data.format?.duration)
+  const fileSizeBytes = safeNumber(data.format?.size)
 
   if (durationSeconds <= 0) {
     throw new Error('Video duration is zero or could not be parsed. File might be corrupted or in an unsupported format.')
@@ -62,10 +60,10 @@ export async function probeMedia(filePath: string): Promise<MediaMetadata> {
     throw new Error('No video stream found in the media file.')
   }
 
-  const videoBitrate = parsePositiveNumber(videoStream.bit_rate)
-  const fps = parsePositiveNumber(videoStream.r_frame_rate, 60)
-  const width = parsePositiveNumber(videoStream.width)
-  const height = parsePositiveNumber(videoStream.height)
+  const videoBitrate = safeNumber(videoStream.bit_rate)
+  const fps = safeNumber(videoStream.r_frame_rate, 60)
+  const width = safeNumber(videoStream.width)
+  const height = safeNumber(videoStream.height)
 
   if (width === 0 || height === 0) {
     throw new Error('Video width or height is zero or could not be parsed. File might be corrupted or in an unsupported format.')
@@ -75,7 +73,7 @@ export async function probeMedia(filePath: string): Promise<MediaMetadata> {
   const hasAudio = Boolean(audioStream)
 
   const audioBitrate = hasAudio
-    ? parsePositiveNumber(audioStream?.bit_rate, MAX_AUDIO_BITRATE)
+    ? safeNumber(audioStream?.bit_rate, MAX_AUDIO_BITRATE)
     : 0
 
   const metadata: MediaMetadata = {
@@ -90,7 +88,7 @@ export async function probeMedia(filePath: string): Promise<MediaMetadata> {
     hasAudio,
   }
 
-  log('Parsed media metadata:', metadata)
+  debug('Parsed media metadata:', metadata)
 
   return metadata
 }

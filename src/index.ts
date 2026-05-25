@@ -1,22 +1,19 @@
 import { getCLIArgs } from "./modules/cli"
-import { setLoggingEnabled } from "./modules/log"
+import { setDebugEnabled } from "./modules/log"
 
 import { MAX_FILE_SIZE_STR } from "./constants"
 
 import { isFileUnderLimit } from "./modules/ffmpeg/probe"
-import { 
-  validateFFmpegSetup, 
-  shrinkVideo,
-} from "./modules/ffmpeg"
+import { validateFFmpegSetup, shrinkVideo } from "./modules/ffmpeg"
 
 async function main(): Promise<void> {
   await validateFFmpegSetup()
 
-	const { filepath, logDebugInfo } = getCLIArgs()
-	setLoggingEnabled(logDebugInfo)
+	const { filepath, debugEnabled } = getCLIArgs()
+	setDebugEnabled(debugEnabled)
 
   if (await isFileUnderLimit(filepath)) {
-    console.log(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
+    console.info(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
     return
   }
 

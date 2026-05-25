@@ -1,10 +1,10 @@
 import { basename, dirname, extname, join } from "path"
 import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants"
-import { log } from "../log"
+import { debug } from "../log"
 import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
-import { cmd, quoteShellPath } from "../cmd"
-import { parsePositiveNumber } from "../parsing"
+import { ffmpeg } from "../cmd"
+import { safeNumber } from "../parsing"
 import { isFileUnderLimit } from "./probe"
 
 export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {
@@ -46,14 +46,14 @@ export function OUTPUT_FILE_PATH(inputFilePath: string, extension: string = 'mp4
 
   const outFilePath = join(inputDirectory, `${inputBaseName}_shrunk.${extension}`)
 
-  log('Built output file path:', { inputFilePath, outFilePath })
+  debug('Built output file path:', { inputFilePath, outFilePath })
 
   return outFilePath
 }
 
 async function createTempDirectory(): Promise<string> {
   const tempDirectory = await mkdtemp(join(tmpdir(), 'discordshrinker-'))
-  log('Created temporary directory:', tempDirectory)
+  debug('Created temporary directory:', tempDirectory)
 
   return tempDirectory
 }
@@ -72,54 +72,52 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   const tempDirectory = await createTempDirectory()
   const passLogFile = join(tempDirectory, 'ffmpeg2pass')
 
-  const inputPath = quoteShellPath(options.inputFilePath)
-  const outputPath = quoteShellPath(options.outputFilePath)
-  const passLogPath = quoteShellPath(passLogFile)
-
-  const targetVideoBitrate = parsePositiveNumber(Math.floor(options.targetVideoBitrate))
+  const targetVideoBitrate = safeNumber(Math.floor(options.targetVideoBitrate))
   if (targetVideoBitrate <= 0) {
     throw new Error('Target video bitrate is not positive')
   }
 
-  const targetAudioBitrate = parsePositiveNumber(Math.floor(options.targetAudioBitrate))
+  const targetAudioBitrate = safeNumber(Math.floor(options.targetAudioBitrate))
 
   const videoFilterArg = options.targetResolution ? DOWNSCALE_VIDEO_FILTER(options.targetResolution.width, options.targetResolution.height, options.targetFps) : undefined
 
   const sharedArgs = [
-    'ffmpeg -y',
-    `-i ${inputPath}`,
-    '-c:v libsvtav1',
-    `-b:v ${targetVideoBitrate}`,
-    videoFilterArg ? `-vf ${videoFilterArg}` : undefined,
-    `-passlogfile ${passLogPath}`,
-  ].filter(Boolean).join(' ')
+    '-y',
+    '-i', options.inputFilePath,
+    '-c:v', 'libsvtav1',
+    '-b:v', String(targetVideoBitrate),
+    ...(videoFilterArg ? ['-vf', videoFilterArg] : []),
+    '-passlogfile', passLogFile,
+  ]
 
-  const firstPassCommand = `${sharedArgs} -pass 1 -an -f null ${quoteShellPath(NULL_DEVICE_PATH)}`
+  const firstPassArgs = [...sharedArgs, '-pass', '1', '-an', '-f', 'null', NULL_DEVICE_PATH]
 
-  const secondPassAudioArgs = options.removeAudio ? '-an' : `-c:a libopus -b:a ${targetAudioBitrate} -vbr constrained`
-  const secondPassCommand = `${sharedArgs} -pass 2 ${secondPassAudioArgs} ${outputPath}`
+  const secondPassAudioArgs: string[] = options.removeAudio
+    ? ['-an']
+    : ['-c:a', 'libopus', '-b:a', String(targetAudioBitrate), '-vbr', 'constrained']
+  const secondPassArgs = [...sharedArgs, '-pass', '2', ...secondPassAudioArgs, options.outputFilePath]
 
-  log('Running two-pass encode with:', {
+  debug('Starting two-pass encode with the following options:', {
     tempDirectoryPath: tempDirectory,
     passLogFilePath: passLogFile,
     targetVideoBitrate,
     targetAudioBitrate,
-    firstPassCommand,
-    secondPassCommand,
+    firstPassArgs,
+    secondPassArgs,
   })
 
   try {
-    const { stdout, stderr } = await cmd(firstPassCommand)
-    log('Ran first pass', stdout, stderr)
+    const { stdout, stderr } = await ffmpeg(firstPassArgs)
+    debug('Ran first pass:\n', stdout, stderr)
 
-    const { stdout: stdout2, stderr: stderr2 } = await cmd(secondPassCommand)
-    log('Ran second pass', stdout2, stderr2)
+    const { stdout: stdout2, stderr: stderr2 } = await ffmpeg(secondPassArgs)
+    debug('Ran second pass:\n', stdout2, stderr2)
   } finally {
     try {
-      log('Cleaning up temporary files...')
+      debug('Removing temp directory')
       await rm(tempDirectory, { recursive: true, force: true })
     } catch (cleanupError) {
-      log('Failed to clean up temporary files:', cleanupError)
+      debug('Failed to remove temp directory:', cleanupError)
     }
   }
 }
@@ -133,22 +131,19 @@ type DownscaleOptions = {
 }
 
 export async function downscale(options: DownscaleOptions): Promise<void> {
-  const inputPath = quoteShellPath(options.inputFilePath)
-  const outputPath = quoteShellPath(options.outputFilePath)
-
   const videoFilterArg = DOWNSCALE_VIDEO_FILTER(options.targetWidth, options.targetHeight, options.targetFps)
 
-  const command = [
-    'ffmpeg -y',
-    `-i ${inputPath}`,
-    `-vf ${videoFilterArg}`,
-    '-movflags +faststart',
-    outputPath,
-  ].join(' ')
+  const args = [
+    '-y',
+    '-i', options.inputFilePath,
+    '-vf', videoFilterArg,
+    '-movflags', '+faststart',
+    options.outputFilePath,
+  ]
 
-  log('Running fast downscale encode with command:', command)
+  debug('Starting fast downscale encode with args:', args)
   
-  await cmd(command)
+  await ffmpeg(args)
 }
 
 const MAX_TWO_PASS_RETRIES = 3
@@ -162,12 +157,12 @@ export async function twoPassEncodeUntilUnderLimit(options: TwoPassEncodeOptions
       targetVideoBitrate,
     }
 
-    log(`Starting two pass attempt ${attempt} with options:`, adjustedOptions)
+    debug(`Starting two-pass attempt ${attempt} with options:`, adjustedOptions)
 
     await twoPassEncode(adjustedOptions)
 
     if (await isFileUnderLimit(adjustedOptions.outputFilePath)) {
-      log(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}.`)
+      debug(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}`)
       return
     }
 
@@ -175,7 +170,7 @@ export async function twoPassEncodeUntilUnderLimit(options: TwoPassEncodeOptions
 
     targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes)
 
-    log(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}.`)
+    debug(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}`)
   }
 
   const errorParts = [
