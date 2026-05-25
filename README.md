@@ -19,7 +19,7 @@ Compresses video files to fit within Discord's 10 MB file size limit. Designed f
    - `DiscordShrinker.exe`
    - `install.ps1`
    - `uninstall.ps1`
-   - `assets/discord_icon.ico`
+   - `assets/icon.ico`
 2. Right-click `install.ps1` → **Run with PowerShell**
 
 The installer will:
