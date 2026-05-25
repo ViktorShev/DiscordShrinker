@@ -1,6 +1,7 @@
 import { basename, dirname, extname, join } from "path"
 import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants"
 import { debug } from "../log"
+import { spin } from "../spinner"
 import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
 import { ffmpeg } from "../cmd"
@@ -107,9 +108,11 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   })
 
   try {
+    spin('Two-pass encode: 1 of 2...')
     const { stdout, stderr } = await ffmpeg(firstPassArgs)
     debug('Ran first pass:\n', stdout, stderr)
 
+    spin('Two-pass encode: 2 of 2...')
     const { stdout: stdout2, stderr: stderr2 } = await ffmpeg(secondPassArgs)
     debug('Ran second pass:\n', stdout2, stderr2)
   } finally {
@@ -142,7 +145,8 @@ export async function downscale(options: DownscaleOptions): Promise<void> {
   ]
 
   debug('Starting fast downscale encode with args:', args)
-  
+
+  spin('Downscaling...')
   await ffmpeg(args)
 }
 

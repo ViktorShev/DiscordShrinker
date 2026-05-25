@@ -8,5 +8,8 @@
     "typescript": "^5"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "yocto-spinner": "^1.2.0"
+  }
 }
