@@ -8,7 +8,7 @@ export function getCLIArgs(): CLIArgs {
   const filepath = args[0]
 
   if (args.length === 0 || !filepath) {
-    throw new Error('No file path provided. Usage: node dist/index.js <file-path> [flags]')
+    throw new Error('No file path provided. Usage: bun src/index.ts <file-path> [flags]')
   }
 
   const flags = args.slice(1)
