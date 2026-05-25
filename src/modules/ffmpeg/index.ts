@@ -1,7 +1,7 @@
 import {
   REQUIRED_AUDIO_ENCODERS,
   REQUIRED_VIDEO_ENCODERS,
-} from "../constants"
+} from "../../constants"
 import { cmd } from "../cmd"
 import { log } from "../log"
 import { isFileUnderLimit, probeMedia, type MediaMetadata } from "./probe";

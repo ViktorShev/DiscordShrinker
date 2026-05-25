@@ -3,11 +3,12 @@ import { setLoggingEnabled } from "./modules/log"
 
 import { MAX_FILE_SIZE_STR } from "./constants"
 
+import { isFileUnderLimit } from "./modules/ffmpeg/probe";
 import { 
   validateFFmpegSetup, 
-  isFileUnderLimit,
   shrinkVideo,
 } from "./modules/ffmpeg"
+
 
 
 async function main(): Promise<void> {
