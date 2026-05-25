@@ -17,10 +17,12 @@ Compresses video files to fit within Discord's 10 MB file size limit. Designed f
 
 1. Download the latest release - it contains:
    - `DiscordShrinker.exe`
-   - `install.ps1`
-   - `uninstall.ps1`
+   - `install.bat` (proxy to execute the .ps1 script)
+   - `uninstall.bat` (also a proxy)
    - `assets/icon.ico`
-2. Right-click `install.ps1` → **Run with PowerShell**
+   - `scripts/install.ps1`
+   - `scripts/uninstall.ps1`
+2. Double-click **`install.bat`**
 
 The installer will:
 - Install **FFmpeg** via `winget` if it isn't already on your system
@@ -29,7 +31,7 @@ The installer will:
 
 > The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
 
-To uninstall, run `uninstall.ps1` the same way.
+To uninstall, double-click **`uninstall.bat`**.
 
 ## Usage
 

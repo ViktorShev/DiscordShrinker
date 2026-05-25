@@ -4,8 +4,9 @@ $ErrorActionPreference = 'Stop'
 $AppName   = 'DiscordShrinker'
 $InstallDir = Join-Path $env:LOCALAPPDATA $AppName
 $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ExeSource  = Join-Path $ScriptDir 'DiscordShrinker.exe'
-$IconSource = Join-Path $ScriptDir 'assets\icon.ico'
+$RootDir    = Split-Path -Parent $ScriptDir
+$ExeSource  = Join-Path $RootDir 'DiscordShrinker.exe'
+$IconSource = Join-Path $RootDir 'assets\icon.ico'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok    { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
