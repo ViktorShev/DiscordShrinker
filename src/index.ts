@@ -7,10 +7,10 @@ import { isFileUnderLimit } from "./modules/ffmpeg/probe"
 import { validateFFmpegSetup, shrinkVideo } from "./modules/ffmpeg"
 
 async function main(): Promise<void> {
-  await validateFFmpegSetup()
+  const { filepath, debugEnabled } = getCLIArgs()
+  setDebugEnabled(debugEnabled)
 
-	const { filepath, debugEnabled } = getCLIArgs()
-	setDebugEnabled(debugEnabled)
+  await validateFFmpegSetup()
 
   if (await isFileUnderLimit(filepath)) {
     console.info(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
