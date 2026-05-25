@@ -89,5 +89,7 @@ Write-Host ""
 Write-Host "  All done! Right-click any video file and choose" -ForegroundColor White
 Write-Host "  'Shrink for Discord' to compress it." -ForegroundColor White
 Write-Host ""
+Write-Host "  Note: You can now delete these installation files if you wish." -ForegroundColor DarkGray
+Write-Host ""
 Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
