@@ -35,6 +35,7 @@ $classesKey.Close()
 Write-Step "Removing application files from $InstallDir..."
 
 if (Test-Path $InstallDir) {
+    Set-Location $env:TEMP
     Remove-Item -Path $InstallDir -Recurse -Force
     Write-Ok "Files removed."
 } else {
