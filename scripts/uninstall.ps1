@@ -35,6 +35,7 @@ $classesKey.Close()
 Write-Step "Removing application files from $InstallDir..."
 
 if (Test-Path $InstallDir) {
+    Set-Location $env:TEMP
     $CleanupBat = Join-Path $env:TEMP 'discordshrinker_cleanup.bat'
     Set-Content -Path $CleanupBat -Value "@echo off`r`ntimeout /t 2 /nobreak > nul`r`nrd /s /q `"$InstallDir`"`r`ndel `"%~f0`""
     Start-Process -FilePath cmd -ArgumentList '/c', $CleanupBat -WindowStyle Hidden
