@@ -5,8 +5,10 @@ $AppName   = 'DiscordShrinker'
 $InstallDir = Join-Path $env:LOCALAPPDATA $AppName
 $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir    = Split-Path -Parent $ScriptDir
-$ExeSource  = Join-Path $RootDir 'DiscordShrinker.exe'
-$IconSource = Join-Path $RootDir 'assets\icon.ico'
+$ExeSource          = Join-Path $RootDir 'DiscordShrinker.exe'
+$IconSource         = Join-Path $RootDir 'assets\icon.ico'
+$UninstallBatSource = Join-Path $RootDir 'uninstall.bat'
+$UninstallPs1Source = Join-Path $ScriptDir 'uninstall.ps1'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok    { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
@@ -27,6 +29,16 @@ if (-not (Test-Path $ExeSource)) {
 
 if (-not (Test-Path $IconSource)) {
     Write-Fail "assets\icon.ico not found next to the install script."
+    exit 1
+}
+
+if (-not (Test-Path $UninstallBatSource)) {
+    Write-Fail "uninstall.bat not found next to the install script."
+    exit 1
+}
+
+if (-not (Test-Path $UninstallPs1Source)) {
+    Write-Fail "scripts\uninstall.ps1 not found next to the install script."
     exit 1
 }
 
@@ -60,8 +72,11 @@ if ($ffmpegInstalled) {
 Write-Step "Installing to $InstallDir..."
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Copy-Item -Path $ExeSource  -Destination $InstallDir -Force
-Copy-Item -Path $IconSource -Destination $InstallDir -Force
+New-Item -ItemType Directory -Force -Path (Join-Path $InstallDir 'scripts') | Out-Null
+Copy-Item -Path $ExeSource          -Destination $InstallDir -Force
+Copy-Item -Path $IconSource         -Destination $InstallDir -Force
+Copy-Item -Path $UninstallBatSource -Destination $InstallDir -Force
+Copy-Item -Path $UninstallPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 
 $ExePath  = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath = Join-Path $InstallDir 'icon.ico'
