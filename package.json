@@ -2,7 +2,8 @@
   "name": "discordshrinker",
   "module": "src/index.ts",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "rcedit": "^5.0.2"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -10,7 +11,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile dist/DiscordShrinker"
+    "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile dist/DiscordShrinker && bun set-icon.js"
   },
   "dependencies": {
     "yocto-spinner": "^1.2.0"
