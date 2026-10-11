@@ -1,16 +1,16 @@
 # DiscordShrinker
 
-Compresses video files to fit within Discord's 10 MB file size limit. Designed for gaming clips and screen recordings.
+Compresses video files to fit within Discord's 20 MB file size limit. Designed for gaming clips and screen recordings.
 
 ## Features
 
-- Targets just under 10 MB while preserving as much quality as possible
+- Targets just under 20 MB while preserving as much quality as possible
 - Uses **AV1** video encoding (`libsvtav1`) and **Opus** audio encoding (`libopus`) for best quality at low bitrates
 - Automatically picks a compression strategy based on the video:
   - Short clips (≤ 30s) or already small resolution → two-pass bitrate encoding
   - Longer / high-res videos → downscales to 720p, then two-pass encodes, then reduces FPS to 30 as a last resort if needed (which will probably never happen)
 - Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
-- Skips compression entirely if the file is already under 10 MB
+- Skips compression entirely if the file is already under 20 MB
 - Output file is saved as `<original name>_shrunk.mp4` next to the original
 
 ## Installation (Windows)
