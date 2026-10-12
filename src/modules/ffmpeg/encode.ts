@@ -112,17 +112,17 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
 
   try {
     const attemptSuffix = options.attemptNumber && options.attemptNumber > 1
-      ? ` (attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES})`
+      ? ` [attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES}]`
       : ''
 
-    reportStage(`Encoding video - pass 1 of 2${attemptSuffix}`, true)
+    reportStage(`Encoding video - Pass 1 of 2 (Analyze)${attemptSuffix}`, true)
     await ffmpeg(firstPassArgs, {
       videoDurationSeconds: options.videoDurationSeconds,
       onProgress: reportProgress,
     })
     debug('Completed first encoding pass.')
 
-    reportStage(`Encoding video - pass 2 of 2${attemptSuffix}`, true)
+    reportStage(`Encoding video - Pass 2 of 2 (Encode)${attemptSuffix}`, true)
     await ffmpeg(secondPassArgs, {
       videoDurationSeconds: options.videoDurationSeconds,
       onProgress: reportProgress,

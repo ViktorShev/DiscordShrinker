@@ -108,7 +108,7 @@ The default context-menu setup launches `scripts/gui.ps1`. That script:
 
 1. Creates a temporary JSON-lines progress file.
 2. Starts a hidden DiscordShrinker worker with `--gui <progress-file>`.
-3. Displays stage and percentage updates in a small Windows Forms window.
+3. Displays the target size together with stage and percentage updates in a small Windows Forms window.
 4. Shows worker errors in a dialog, or closes the window shortly after success.
 5. Removes the temporary progress file when the window closes.
 

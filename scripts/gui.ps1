@@ -151,6 +151,14 @@ $progressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
 $progressBar.MarqueeAnimationSpeed = 25
 $form.Controls.Add($progressBar)
 
+$targetLabel = New-Object System.Windows.Forms.Label
+$targetLabel.Location = New-Object System.Drawing.Point(18, 116)
+$targetLabel.Size = New-Object System.Drawing.Size(330, 20)
+$targetLabel.ForeColor = [System.Drawing.SystemColors]::GrayText
+$targetLabel.Text = "Target: $TargetMb MB"
+$targetLabel.AutoEllipsis = $true
+$form.Controls.Add($targetLabel)
+
 $closeButton = New-Object System.Windows.Forms.Button
 $closeButton.Location = New-Object System.Drawing.Point(367, 110)
 $closeButton.Size = New-Object System.Drawing.Size(75, 28)
