@@ -6,13 +6,13 @@ It keeps the original resolution when it can. For tighter size limits, it scales
 
 The compressed copy is saved next to the original as `<name>_shrunk.mp4`.
 
-For a detailed explanation of all the features and technical breakdown, see [How DiscordShrinker works](docs/how-it-works.md).
+For a detailed explanation of all the features, as well as a technical breakdown, see [how DiscordShrinker works](docs/how-it-works.md).
 
 ## Installation
 
 Download and extract the [latest release](https://github.com/ViktorShev/DiscordShrinker/releases), then run `install.bat`.
 
-The installer copies DiscordShrinker to `%LOCALAPPDATA%\DiscordShrinker`, adds the right-click menu, and installs FFmpeg through `winget` if it is missing (uses your local FFmpeg installation instead if present).
+The installer copies DiscordShrinker to `%LOCALAPPDATA%\DiscordShrinker`, adds the right-click menu, and installs FFmpeg through `winget` if it's missing (uses your local FFmpeg installation instead, if present).
 
 On Windows 11, the shrinker's menu is under **Show more options**.
 
