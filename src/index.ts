@@ -1,39 +1,41 @@
 import { getCLIArgs } from "./modules/cli"
-import { debug, setDebugEnabled } from "./modules/log"
-import { setSpinnerEnabled, spin, spinSuccess, spinError, isSpinnerEnabled } from "./modules/spinner"
+import { setDebugEnabled } from "./modules/log"
 
-import { MAX_FILE_SIZE_STR } from "./constants"
+import { BYTES_PER_MB, MAX_FILE_SIZE_IN_BYTES_FREE, MAX_FILE_SIZE_IN_MB_FREE } from "./constants"
 
 import { isFileUnderLimit } from "./modules/ffmpeg/probe"
 import { validateFFmpegSetup, shrinkVideo } from "./modules/ffmpeg"
-import { pause } from "./modules/misc";
+import { reportError, reportStage, reportSuccess, setProgressFile } from "./modules/progress"
 
 async function main(): Promise<void> {
-  const { filepath, debugEnabled } = getCLIArgs()
-  setDebugEnabled(debugEnabled)
-  setSpinnerEnabled(!debugEnabled)
+  const { filepath, targetMb, guiProgressFile } = getCLIArgs()
 
-  spin('Checking FFmpeg setup...')
+  setDebugEnabled(!guiProgressFile)
+  setProgressFile(guiProgressFile)
+
+  const maxFileSizeInBytes = targetMb === MAX_FILE_SIZE_IN_MB_FREE
+    ? MAX_FILE_SIZE_IN_BYTES_FREE
+    : targetMb * BYTES_PER_MB
+  const maxFileSizeStr = `${targetMb} MB`
+
+  reportStage('Checking FFmpeg setup...')
   await validateFFmpegSetup()
 
-  if (await isFileUnderLimit(filepath)) {
-    spinSuccess(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
-    debug(`File is already within the ${MAX_FILE_SIZE_STR} limit.`)
-    await pause(2000)
+  if (await isFileUnderLimit(filepath, maxFileSizeInBytes)) {
+    const message = `File is already within the ${maxFileSizeStr} limit.`
+    reportSuccess(message)
     return
   }
 
-  await shrinkVideo(filepath)
-  spinSuccess('Video compressed successfully!')
-  await pause(2000)
+  reportStage('Analyzing video...')
+  await shrinkVideo(filepath, maxFileSizeInBytes)
+  reportSuccess('Video compressed successfully!')
 }
 
-main().catch(async error => {
-	const message = error instanceof Error ? error.message : String(error)
-	spinError(message)
-	if (!isSpinnerEnabled()) console.error(message)
-	process.exitCode = 1
+main().catch(error => {
+  const message = error instanceof Error ? error.message : String(error)
+  reportError(message)
 
-  await pause(10000)
+  process.exitCode = 1
 })
 

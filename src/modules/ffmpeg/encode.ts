@@ -1,21 +1,22 @@
 import { basename, dirname, extname, join } from "path"
-import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants"
+import { METADATA_OVERHEAD_IN_BYTES, NULL_DEVICE_PATH } from "../../constants"
 import { debug } from "../log"
-import { spin } from "../spinner"
 import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
 import { ffmpeg } from "../cmd"
 import { safeNumber } from "../misc"
+import { reportProgress, reportStage } from "../progress"
 import { isFileUnderLimit } from "./probe"
 
-export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {
-	const maxBitrate = (TARGET_FILE_SIZE_IN_BYTES * 8) / durationSeconds - audioBitrate
+export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number, maxFileSizeInBytes: number): number {
+	const targetFileSizeInBytes = maxFileSizeInBytes - METADATA_OVERHEAD_IN_BYTES
+	const maxBitrate = (targetFileSizeInBytes * 8) / durationSeconds - audioBitrate
 
   return Math.floor(maxBitrate * 0.95) // Reduce target bitrate by 5% as a safety margin for bitrate fluctuations
 }
 
-function RETRY_TARGET_VIDEO_BITRATE(previousBitrate: number, actualSizeBytes: number): number {
-  return Math.floor(previousBitrate * (MAX_FILE_SIZE_IN_BYTES / actualSizeBytes) * 0.98) // Scale bitrate proportionally to how far over the limit we landed, then apply an extra 2% safety margin
+function RETRY_TARGET_VIDEO_BITRATE(previousBitrate: number, actualSizeBytes: number, maxFileSizeInBytes: number): number {
+  return Math.floor(previousBitrate * (maxFileSizeInBytes / actualSizeBytes) * 0.98) // Scale bitrate proportionally to how far over the limit we landed, then apply an extra 2% safety margin
 }
 
 export const MIN_FPS = 30
@@ -62,11 +63,14 @@ async function createTempDirectory(): Promise<string> {
 type TwoPassEncodeOptions = {
   inputFilePath: string
   outputFilePath: string
+  maxFileSizeInBytes: number
+  videoDurationSeconds: number
   targetVideoBitrate: number
   targetAudioBitrate: number
   targetResolution?: { width: number, height: number }
   targetFps?: number
   removeAudio: boolean
+  attemptNumber?: number
 }
 
 async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
@@ -79,7 +83,6 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   }
 
   const targetAudioBitrate = safeNumber(Math.floor(options.targetAudioBitrate))
-
   const videoFilterArg = options.targetResolution ? DOWNSCALE_VIDEO_FILTER(options.targetResolution.width, options.targetResolution.height, options.targetFps) : undefined
 
   const sharedArgs = [
@@ -108,16 +111,26 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   })
 
   try {
-    spin('Two-pass encoding (pass 1 of 2)...')
-    const { stdout, stderr } = await ffmpeg(firstPassArgs)
-    debug('Ran first pass:\n', stdout, stderr)
+    const attemptSuffix = options.attemptNumber && options.attemptNumber > 1
+      ? ` (attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES})`
+      : ''
 
-    spin('Two-pass encoding (pass 2 of 2)...')
-    const { stdout: stdout2, stderr: stderr2 } = await ffmpeg(secondPassArgs)
-    debug('Ran second pass:\n', stdout2, stderr2)
+    reportStage(`Encoding video - Pass 1 of 2 (Analyze)${attemptSuffix}`, true)
+    await ffmpeg(firstPassArgs, {
+      videoDurationSeconds: options.videoDurationSeconds,
+      onProgress: reportProgress,
+    })
+    debug('Completed first encoding pass.')
+
+    reportStage(`Encoding video - Pass 2 of 2 (Encode)${attemptSuffix}`, true)
+    await ffmpeg(secondPassArgs, {
+      videoDurationSeconds: options.videoDurationSeconds,
+      onProgress: reportProgress,
+    })
+    debug('Completed second encoding pass.')
   } finally {
     try {
-      spin('Cleaning up temporary files...')
+      reportStage('Cleaning up temporary files...')
       debug('Removing temp directory')
       await rm(tempDirectory, { recursive: true, force: true })
     } catch (cleanupError) {
@@ -132,6 +145,7 @@ type DownscaleOptions = {
   targetWidth: number
   targetHeight: number
   targetFps?: number
+  videoDurationSeconds: number
 }
 
 export async function downscale(options: DownscaleOptions): Promise<void> {
@@ -147,8 +161,11 @@ export async function downscale(options: DownscaleOptions): Promise<void> {
 
   debug('Starting fast downscale encode with args:', args)
 
-  spin('Downscaling...')
-  await ffmpeg(args)
+  reportStage('Downscaling video...', true)
+  await ffmpeg(args, {
+    videoDurationSeconds: options.videoDurationSeconds,
+    onProgress: reportProgress,
+  })
 }
 
 const MAX_TWO_PASS_RETRIES = 3
@@ -157,25 +174,27 @@ export async function twoPassEncodeUntilUnderLimit(options: TwoPassEncodeOptions
   let targetVideoBitrate = options.targetVideoBitrate
 
   for (let attempt = 0; attempt < MAX_TWO_PASS_RETRIES; attempt++) {
+    const attemptNumber = attempt + 1
     const adjustedOptions: TwoPassEncodeOptions = {
       ...options,
       targetVideoBitrate,
+      attemptNumber,
     }
 
-    debug(`Starting two-pass attempt ${attempt} with options:`, adjustedOptions)
+    debug(`Starting two-pass attempt ${attemptNumber} with options:`, adjustedOptions)
 
     await twoPassEncode(adjustedOptions)
 
-    if (await isFileUnderLimit(adjustedOptions.outputFilePath)) {
-      debug(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}`)
+    if (await isFileUnderLimit(adjustedOptions.outputFilePath, options.maxFileSizeInBytes)) {
+      debug(`Successfully compressed video under file size limit on two-pass attempt: ${attemptNumber}`)
       return
     }
 
     const { size: actualSizeBytes } = await stat(adjustedOptions.outputFilePath)
 
-    targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes)
+    targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes, options.maxFileSizeInBytes)
 
-    debug(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}`)
+    debug(`Two-pass attempt ${attemptNumber} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}`)
   }
 
   const errorParts = [

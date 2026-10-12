@@ -1,9 +1,13 @@
+# versions
+v[0-9]*
+
 # dependencies (bun install)
 node_modules
 
 # output
 out
 dist
+release
 *.tgz
 *.map
 DiscordShrinker.exe

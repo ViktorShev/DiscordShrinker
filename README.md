@@ -1,67 +1,62 @@
 # DiscordShrinker
 
-Compresses video files to fit within Discord's 20 MB file size limit. Designed for gaming clips and screen recordings.
+DiscordShrinker compresses videos to a size you can upload to Discord. It adds a right-click menu to Windows and targets the 20mb free limit by default (as of writing).
 
-## Features
+It keeps the original resolution when it can. For tighter size limits, it scales 4K video to 1080p or 1080p video to 720p. Determined via a relation between bitrate, resolution and FPS.
 
-- Targets just under 20 MB while preserving as much quality as possible
-- Uses **AV1** video encoding (`libsvtav1`) and **Opus** audio encoding (`libopus`) for best quality at low bitrates
-- Automatically picks a compression strategy based on the video:
-  - Short clips (≤ 30s) or already small resolution → two-pass bitrate encoding
-  - Longer / high-res videos → downscales to 720p, then two-pass encodes, then reduces FPS to 30 as a last resort if needed (which will probably never happen)
-- Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
-- Skips compression entirely if the file is already under 20 MB
-- Output file is saved as `<original name>_shrunk.mp4` next to the original
+The compressed copy is saved next to the original as `<name>_shrunk.mp4`.
 
-## Installation (Windows)
+For a detailed explanation of all the features and technical breakdown, see [How DiscordShrinker works](docs/how-it-works.md).
 
-1. Download the latest release - it contains:
-   - `DiscordShrinker.exe`
-   - `install.bat` (proxy to execute the .ps1 script)
-   - `uninstall.bat` (also a proxy)
-   - `assets/icon.ico`
-   - `scripts/install.ps1`
-   - `scripts/uninstall.ps1`
-2. Double-click **`install.bat`**
+## Installation
 
-The installer will:
-- Install **FFmpeg** via `winget` if it isn't already on your system
-- Copy the app to `%LOCALAPPDATA%\DiscordShrinker\`
-- Add a **"Shrink for Discord"** entry to the right-click context menu for all files
+Download and extract the [latest release](https://github.com/ViktorShev/DiscordShrinker/releases), then run `install.bat`.
 
-> The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
+The installer copies DiscordShrinker to `%LOCALAPPDATA%\DiscordShrinker`, adds the right-click menu, and installs FFmpeg through `winget` if it is missing (uses your local FFmpeg installation instead if present).
 
-To uninstall, double-click **`uninstall.bat`**.
+On Windows 11, the shrinker's menu is under **Show more options**.
 
 ## Usage
 
-### Right-click menu
+Right-click any video and click on **Shrink for Discord** to target the default free limit. Its target limit can be changed through **Customize...**.
 
-Right-click any video file → **Show more options** → **Shrink for Discord**.
+If you want to target a different limit, hover over **Shrink For Discord Extra**, it will open a submenu with the default options of 8, 10, 20, 50, 100, and 500mb.
 
-A terminal window will open, show progress, and close when done. The compressed file appears next to the original.
+There is also the **Customize...** option, used to add or remove limits, change the default limit, restore the default limits and 20 MB target, or switch context-menu executions between the progress window and debug terminal output.
+
+Files that are already below the limit are not processed.
 
 ### Command line
 
 ```
-DiscordShrinker.exe <file-path> [--debug]
+DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--gui <progress-file>]
 ```
 
 | Flag | Description |
 |---|---|
-| `--debug` | Print verbose FFmpeg output and internal logs |
+| `--targetMb <megabytes>` | Set the maximum output file size in MB (defaults to 20) |
+| `--gui <progress-file>` | Writes JSONL progress events to the supplied file and disables terminal debug output. Used by the Windows Forms progress window when launching its worker process. |
+
+Command-line execution shows FFmpeg progress and debug output in the terminal by default.
+
+Context-menu execution is set up to automatically provide the `--gui` flag.
 
 ## Building from source
 
-**Requirements:** [Bun](https://bun.sh), [FFmpeg](https://ffmpeg.org)
+Requires [Bun](https://bun.sh) and [FFmpeg](https://ffmpeg.org).
 
 ```bash
 bun install
-bun run compile   # produces DiscordShrinker.exe
+bun run compile
+bun run bundle
 ```
 
-To run without compiling:
+To run from source without compiling
 
 ```bash
-bun run src/index.ts <file-path>
+bun src/index.ts <file-path> [--targetMb <megabytes>]
 ```
+
+## Uninstalling
+
+Run `uninstall.bat` found in the installation folder.

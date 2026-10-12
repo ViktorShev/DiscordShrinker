@@ -13,18 +13,32 @@ Write-Host "  DiscordShrinker Uninstaller" -ForegroundColor White
 Write-Host "  ---------------------------" -ForegroundColor DarkGray
 Write-Host ""
 
-# Remove right-click context menu entry
+# Remove right-click context menu entries
 
-Write-Step "Removing right-click context menu entry..."
+Write-Step "Removing right-click context menu entries..."
 
 $classesKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes', $true)
 $starKey    = $classesKey.OpenSubKey('*\shell', $true)
+$removedContextMenu = $false
 
-if ($null -ne $starKey -and $null -ne $starKey.OpenSubKey('ShrinkForDiscord')) {
-    $starKey.DeleteSubKeyTree('ShrinkForDiscord')
-    Write-Ok "Context menu entry removed."
+if ($null -ne $starKey) {
+    $contextMenuKeys = @('ShrinkForDiscord', 'ShrinkForDiscordExtra')
+
+    foreach ($contextMenuKey in $contextMenuKeys) {
+        $existingKey = $starKey.OpenSubKey($contextMenuKey)
+
+        if ($null -ne $existingKey) {
+            $existingKey.Close()
+            $starKey.DeleteSubKeyTree($contextMenuKey)
+            $removedContextMenu = $true
+        }
+    }
+}
+
+if ($removedContextMenu) {
+    Write-Ok "Context menu entries removed."
 } else {
-    Write-Skip "Context menu entry not found, skipping."
+    Write-Skip "Context menu entries not found, skipping."
 }
 
 if ($null -ne $starKey) { $starKey.Close() }
