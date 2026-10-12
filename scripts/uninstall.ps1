@@ -13,9 +13,9 @@ Write-Host "  DiscordShrinker Uninstaller" -ForegroundColor White
 Write-Host "  ---------------------------" -ForegroundColor DarkGray
 Write-Host ""
 
-# Remove right-click context menu entry
+# Remove right-click context menu entries
 
-Write-Step "Removing right-click context menu entry..."
+Write-Step "Removing right-click context menu entries..."
 
 $classesKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes', $true)
 $starKey    = $classesKey.OpenSubKey('*\shell', $true)
