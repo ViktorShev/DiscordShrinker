@@ -9,6 +9,8 @@ $ExeSource          = Join-Path $RootDir 'DiscordShrinker.exe'
 $IconSource         = Join-Path $RootDir 'assets\icon.ico'
 $UninstallBatSource = Join-Path $RootDir 'uninstall.bat'
 $UninstallPs1Source = Join-Path $ScriptDir 'uninstall.ps1'
+$ManageExtraFileSizeOptionsBatSource = Join-Path $RootDir 'manage-extra-filesize-options.bat'
+$ManageExtraFileSizeOptionsPs1Source = Join-Path $ScriptDir 'manage-extra-filesize-options.ps1'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok    { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
@@ -39,6 +41,16 @@ if (-not (Test-Path $UninstallBatSource)) {
 
 if (-not (Test-Path $UninstallPs1Source)) {
     Write-Fail "scripts\uninstall.ps1 not found next to the install script."
+    exit 1
+}
+
+if (-not (Test-Path $ManageExtraFileSizeOptionsBatSource)) {
+    Write-Fail "manage-extra-filesize-options.bat not found next to the install script."
+    exit 1
+}
+
+if (-not (Test-Path $ManageExtraFileSizeOptionsPs1Source)) {
+    Write-Fail "scripts\manage-extra-filesize-options.ps1 not found next to the install script."
     exit 1
 }
 
@@ -77,9 +89,12 @@ Copy-Item -Path $ExeSource          -Destination $InstallDir -Force
 Copy-Item -Path $IconSource         -Destination $InstallDir -Force
 Copy-Item -Path $UninstallBatSource -Destination $InstallDir -Force
 Copy-Item -Path $UninstallPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
+Copy-Item -Path $ManageExtraFileSizeOptionsBatSource -Destination $InstallDir -Force
+Copy-Item -Path $ManageExtraFileSizeOptionsPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 
-$ExePath  = Join-Path $InstallDir 'DiscordShrinker.exe'
-$IconPath = Join-Path $InstallDir 'icon.ico'
+$ExePath                            = Join-Path $InstallDir 'DiscordShrinker.exe'
+$IconPath                           = Join-Path $InstallDir 'icon.ico'
+$ManageExtraFileSizeOptionsBatPath = Join-Path $InstallDir 'manage-extra-filesize-options.bat'
 
 Write-Ok "Files copied."
 
@@ -102,18 +117,33 @@ $extraKey.SetValue('Icon', $IconPath)
 $extraKey.SetValue('SubCommands', '')
 $extraShellKey = $extraKey.CreateSubKey('shell')
 
-$targetSizesMb = @(8, 10, 20, 50, 100, 500)
+$optionsInitialized = $extraKey.GetValue('OptionsInitialized')
+$existingOptionKeyNames = @($extraShellKey.GetSubKeyNames() | Where-Object { $_ -ne 'zz_AddCustom' })
 
-for ($index = 0; $index -lt $targetSizesMb.Count; $index++) {
-    $targetMb = $targetSizesMb[$index]
-    $optionKeyName = '{0:D2}_{1}MB' -f ($index + 1), $targetMb
-    $optionKey = $extraShellKey.CreateSubKey($optionKeyName)
-    $optionKey.SetValue('MUIVerb', "$targetMb MB")
-    $optionCommandKey = $optionKey.CreateSubKey('command')
-    $optionCommandKey.SetValue('', "`"$ExePath`" `"%1`" --targetMb $targetMb")
-    $optionCommandKey.Close()
-    $optionKey.Close()
+if ($null -eq $optionsInitialized -and $existingOptionKeyNames.Count -eq 0) {
+    $targetSizesMb = @(8, 10, 20, 50, 100, 500)
+
+    for ($index = 0; $index -lt $targetSizesMb.Count; $index++) {
+        $targetMb = $targetSizesMb[$index]
+        $optionKeyName = '{0:D4}_Target' -f ($index + 1)
+        $optionKey = $extraShellKey.CreateSubKey($optionKeyName)
+        $optionKey.SetValue('MUIVerb', "$targetMb MB")
+        $optionKey.SetValue('TargetMb', [string]$targetMb)
+        $optionCommandKey = $optionKey.CreateSubKey('command')
+        $optionCommandKey.SetValue('', "`"$ExePath`" `"%1`" --targetMb $targetMb")
+        $optionCommandKey.Close()
+        $optionKey.Close()
+    }
 }
+
+$extraKey.SetValue('OptionsInitialized', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+
+$addCustomKey = $extraShellKey.CreateSubKey('zz_AddCustom')
+$addCustomKey.SetValue('MUIVerb', 'Add custom...')
+$addCustomCommandKey = $addCustomKey.CreateSubKey('command')
+$addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$ManageExtraFileSizeOptionsBatPath`"`"")
+$addCustomCommandKey.Close()
+$addCustomKey.Close()
 
 $extraShellKey.Close()
 $extraKey.Close()
@@ -127,6 +157,7 @@ Write-Host ""
 Write-Host "  All done! Right-click any video file and choose" -ForegroundColor White
 Write-Host "  'Shrink for Discord' to compress it." -ForegroundColor White
 Write-Host "  Use 'Shrink For Discord Extra' for another target size." -ForegroundColor White
+Write-Host "  Choose 'Add custom...' there to manage the size list." -ForegroundColor White
 Write-Host ""
 Write-Host "  Note: You can now delete these installation files if you wish." -ForegroundColor DarkGray
 Write-Host ""

@@ -20,16 +20,18 @@ Compresses video files to a configurable target size. Designed for sharing gamin
    - `DiscordShrinker.exe`
    - `install.bat` (proxy to execute the .ps1 script)
    - `uninstall.bat` (also a proxy)
+   - `manage-extra-filesize-options.bat` (proxy for managing custom submenu sizes)
    - `assets/icon.ico`
    - `scripts/install.ps1`
    - `scripts/uninstall.ps1`
+   - `scripts/manage-extra-filesize-options.ps1`
 2. Double-click **`install.bat`**
 
 The installer will:
 - Install **FFmpeg** via `winget` if it isn't already on your system
 - Copy the app to `%LOCALAPPDATA%\DiscordShrinker\`
 - Add a **"Shrink for Discord"** entry targeting 20 MB to the right-click context menu for all files
-- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets
+- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets plus an **"Add custom..."** manager
 
 > The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
 
@@ -42,6 +44,8 @@ To uninstall, double-click **`uninstall.bat`**.
 Right-click any video file → **Show more options** → **Shrink for Discord**. This uses Discord's 20 MB free upload limit.
 
 For another target, open **Shrink For Discord Extra** and choose 8, 10, 20, 50, 100, or 500 MB.
+
+Choose **Add custom...** at the bottom of that submenu to manage all extra size options. You can add a target at any menu position or remove either a default or custom target. New targets are added at the bottom unless you enter another position; **Add custom...** always remains last.
 
 A terminal window will open, show progress, and close when done. The compressed file appears next to the original.
 
