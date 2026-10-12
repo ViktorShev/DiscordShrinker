@@ -14,6 +14,43 @@ $ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace DiscordShrinker
+{
+    public static class WindowMenu
+    {
+        private const uint ScClose = 0xF060;
+        private const uint MfByCommand = 0x00000000;
+        private const uint MfEnabled = 0x00000000;
+        private const uint MfGrayed = 0x00000001;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr windowHandle, bool revert);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnableMenuItem(IntPtr menuHandle, uint itemId, uint enableFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool DrawMenuBar(IntPtr windowHandle);
+
+        public static void SetCloseEnabled(IntPtr windowHandle, bool enabled)
+        {
+            IntPtr menuHandle = GetSystemMenu(windowHandle, false);
+            if (menuHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            uint state = enabled ? MfEnabled : MfGrayed;
+            EnableMenuItem(menuHandle, ScClose, MfByCommand | state);
+            DrawMenuBar(windowHandle);
+        }
+    }
+}
+'@
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -68,9 +105,10 @@ $form.ClientSize = New-Object System.Drawing.Size(460, 154)
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
 $form.MaximizeBox = $false
 $form.MinimizeBox = $false
-$form.ControlBox = $false
+$form.ControlBox = $true
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
 $form.ShowInTaskbar = $true
+$form.ShowIcon = $true
 $form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 
 $iconPaths = @(
@@ -207,7 +245,7 @@ function Complete-Window {
     }
 
     $state.Finalized = $true
-    $form.ControlBox = $true
+    [DiscordShrinker.WindowMenu]::SetCloseEnabled($form.Handle, $true)
     $closeButton.Visible = $true
     $closeButton.Enabled = $true
 
@@ -253,12 +291,21 @@ $timer.Add_Tick({
 
 $form.Add_Shown({
     try {
+        [DiscordShrinker.WindowMenu]::SetCloseEnabled($form.Handle, $false)
         $null = $process.Start()
         $timer.Start()
     } catch {
         $state.ResultType = 'error'
         $state.ResultMessage = $_.Exception.Message
         Complete-Window
+    }
+})
+
+$form.Add_FormClosing({
+    param($sender, $eventArgs)
+
+    if (-not $state.Finalized) {
+        $eventArgs.Cancel = $true
     }
 })
 
