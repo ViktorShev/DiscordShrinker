@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   const maxFileSizeInBytes = targetMb === MAX_FILE_SIZE_IN_MB_FREE
     ? MAX_FILE_SIZE_IN_BYTES_FREE
     : targetMb * BYTES_PER_MB
-  const maxFileSizeStr = `${targetMb} MiB`
+  const maxFileSizeStr = `${targetMb} MB`
 
   reportStage('Checking FFmpeg setup...')
   await validateFFmpegSetup()
