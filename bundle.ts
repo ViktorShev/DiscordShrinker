@@ -11,10 +11,10 @@ const releaseFiles = [
   ['assets/icon.ico', 'assets/icon.ico'],
   ['scripts/proxies/install.bat', 'install.bat'],
   ['scripts/proxies/uninstall.bat', 'uninstall.bat'],
-  ['scripts/proxies/extras-manager.bat', 'extras-manager.bat'],
+  ['scripts/proxies/extras.bat', 'extras.bat'],
   ['scripts/install.ps1', 'scripts/install.ps1'],
   ['scripts/uninstall.ps1', 'scripts/uninstall.ps1'],
-  ['scripts/extras-manager.ps1', 'scripts/extras-manager.ps1'],
+  ['scripts/extras.ps1', 'scripts/extras.ps1'],
   ['scripts/gui.ps1', 'scripts/gui.ps1'],
 ] as const
 

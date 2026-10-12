@@ -120,10 +120,10 @@ The `--gui` option is mainly an internal channel between the PowerShell window a
 
 The installer copies the release into `%LOCALAPPDATA%\DiscordShrinker` and registers two entries under the current user's `Software\Classes\*\shell` registry path:
 
-- **Shrink for Discord** targets 20 MiB.
+- **Shrink for Discord** targets 20 MiB by default, or a different configured size selected in the Extras Manager.
 - **Shrink For Discord Extra** contains the configured size choices and **Customize...**.
 
-The Extras Manager stores each size as an ordered registry subkey. It can add or remove any size, restore 8, 10, 20, 50, 100, and 500 MiB defaults, and switch every compression command between GUI and debug mode. The selected mode is stored in the registry and is preserved if the installer is run again.
+The Extras Manager stores each size as an ordered registry subkey. It can add or remove any size, select one of the configured sizes as the default **Shrink for Discord** target, restore the 8, 10, 20, 50, 100, and 500 MiB options together with the 20 MiB default target, and switch every compression command between GUI and debug mode. The default target and selected mode are stored in the registry and preserved if the installer is run again.
 
 Uninstalling removes both context-menu trees and the application directory. FFmpeg is deliberately left installed because it may have existed before DiscordShrinker or may be used by another application.
 
@@ -139,6 +139,6 @@ Uninstalling removes both context-menu trees and the application directory. FFmp
 | `src/modules/cmd.ts` | Child-process execution and FFmpeg progress parsing |
 | `src/modules/progress.ts` | JSON-lines progress events for the GUI |
 | `scripts/gui.ps1` | Native Windows progress window and hidden worker launch |
-| `scripts/extras-manager.ps1` | Custom size and GUI/debug-mode management |
+| `scripts/extras.ps1` | Custom sizes, default-target selection, and GUI/debug-mode management |
 | `scripts/install.ps1` | File installation, FFmpeg setup, and registry registration |
 | `bundle.ts` | Assembly of the distributable `release` directory |

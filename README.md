@@ -18,11 +18,11 @@ On Windows 11, the shrinker's menu is under **Show more options**.
 
 ## Usage
 
-Right-click any video and click on **Shrink for Discord** to target the default free limit.
+Right-click any video and click on **Shrink for Discord** to target the default free limit. Its target limit can be changed through **Customize...**.
 
 If you want to target a different limit, hover over **Shrink For Discord Extra**, it will open a submenu with the default options of 8, 10, 20, 50, 100, and 500mb.
 
-There is also the **Customize...** option, used to add or remove limits, restore the defaults, or switch context-menu executions between the progress window and debug terminal output.
+There is also the **Customize...** option, used to add or remove limits, change the default limit, restore the default limits and 20 MB target, or switch context-menu executions between the progress window and debug terminal output.
 
 Files that are already below the limit are not processed.
 
