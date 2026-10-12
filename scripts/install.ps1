@@ -9,8 +9,8 @@ $ExeSource          = Join-Path $RootDir 'DiscordShrinker.exe'
 $IconSource         = Join-Path $RootDir 'assets\icon.ico'
 $UninstallBatSource = Join-Path $RootDir 'uninstall.bat'
 $UninstallPs1Source = Join-Path $ScriptDir 'uninstall.ps1'
-$FileSizeOptionsManagerBatSource = Join-Path $RootDir 'filesize-options-manager.bat'
-$FileSizeOptionsManagerPs1Source = Join-Path $ScriptDir 'filesize-options-manager.ps1'
+$ExtrasManagerBatSource = Join-Path $RootDir 'extras-manager.bat'
+$ExtrasManagerPs1Source = Join-Path $ScriptDir 'extras-manager.ps1'
 $GuiPs1Source = Join-Path $ScriptDir 'gui.ps1'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
@@ -45,13 +45,13 @@ if (-not (Test-Path $UninstallPs1Source)) {
     exit 1
 }
 
-if (-not (Test-Path $FileSizeOptionsManagerBatSource)) {
-    Write-Fail "filesize-options-manager.bat not found next to the install script."
+if (-not (Test-Path $ExtrasManagerBatSource)) {
+    Write-Fail "extras-manager.bat not found next to the install script."
     exit 1
 }
 
-if (-not (Test-Path $FileSizeOptionsManagerPs1Source)) {
-    Write-Fail "scripts\filesize-options-manager.ps1 not found next to the install script."
+if (-not (Test-Path $ExtrasManagerPs1Source)) {
+    Write-Fail "scripts\extras-manager.ps1 not found next to the install script."
     exit 1
 }
 
@@ -95,19 +95,26 @@ Copy-Item -Path $ExeSource          -Destination $InstallDir -Force
 Copy-Item -Path $IconSource         -Destination $InstallDir -Force
 Copy-Item -Path $UninstallBatSource -Destination $InstallDir -Force
 Copy-Item -Path $UninstallPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
-Copy-Item -Path $FileSizeOptionsManagerBatSource -Destination $InstallDir -Force
-Copy-Item -Path $FileSizeOptionsManagerPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
+Copy-Item -Path $ExtrasManagerBatSource -Destination $InstallDir -Force
+Copy-Item -Path $ExtrasManagerPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 Copy-Item -Path $GuiPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 
 $ExePath                            = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath                           = Join-Path $InstallDir 'icon.ico'
-$FileSizeOptionsManagerBatPath     = Join-Path $InstallDir 'filesize-options-manager.bat'
+$ExtrasManagerBatPath             = Join-Path $InstallDir 'extras-manager.bat'
 $GuiPs1Path                        = Join-Path $InstallDir 'scripts\gui.ps1'
 
 function Get-ShrinkCommand {
-    param([string]$TargetMb)
+    param(
+        [string]$TargetMb,
+        [bool]$GuiEnabled
+    )
 
-    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    if ($GuiEnabled) {
+        return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    }
+
+    return "`"$ExePath`" `"%1`" --targetMb $TargetMb"
 }
 
 Write-Ok "Files copied."
@@ -117,22 +124,27 @@ Write-Ok "Files copied."
 Write-Step "Adding DiscordShrinker options to the right-click menu..."
 
 $classesKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes', $true)
-$shellKey    = $classesKey.CreateSubKey('*\shell\ShrinkForDiscord')
-$shellKey.SetValue('', 'Shrink for Discord')
-$shellKey.SetValue('Icon', $IconPath)
-$cmdKey = $shellKey.CreateSubKey('command')
-$cmdKey.SetValue('', (Get-ShrinkCommand '20'))
-$cmdKey.Close()
-$shellKey.Close()
-
 $extraKey = $classesKey.CreateSubKey('*\shell\ShrinkForDiscordExtra')
 $extraKey.SetValue('MUIVerb', 'Shrink For Discord Extra')
 $extraKey.SetValue('Icon', $IconPath)
 $extraKey.SetValue('SubCommands', '')
+
+$guiEnabledValue = $extraKey.GetValue('GuiEnabled')
+$guiEnabled = if ($null -eq $guiEnabledValue) { $true } else { [int]$guiEnabledValue -ne 0 }
+$extraKey.SetValue('GuiEnabled', [int]$guiEnabled, [Microsoft.Win32.RegistryValueKind]::DWord)
+
+$shellKey = $classesKey.CreateSubKey('*\shell\ShrinkForDiscord')
+$shellKey.SetValue('', 'Shrink for Discord')
+$shellKey.SetValue('Icon', $IconPath)
+$cmdKey = $shellKey.CreateSubKey('command')
+$cmdKey.SetValue('', (Get-ShrinkCommand '20' $guiEnabled))
+$cmdKey.Close()
+$shellKey.Close()
+
 $extraShellKey = $extraKey.CreateSubKey('shell')
 
 $optionsInitialized = $extraKey.GetValue('OptionsInitialized')
-$existingOptionKeyNames = @($extraShellKey.GetSubKeyNames() | Where-Object { $_ -ne 'zz_AddCustom' })
+$existingOptionKeyNames = @($extraShellKey.GetSubKeyNames() | Where-Object { $_ -ne 'zz_Customize' })
 
 if ($null -eq $optionsInitialized -and $existingOptionKeyNames.Count -eq 0) {
     $targetSizesMb = @(8, 10, 20, 50, 100, 500)
@@ -144,7 +156,7 @@ if ($null -eq $optionsInitialized -and $existingOptionKeyNames.Count -eq 0) {
         $optionKey.SetValue('MUIVerb', "$targetMb MB")
         $optionKey.SetValue('TargetMb', [string]$targetMb)
         $optionCommandKey = $optionKey.CreateSubKey('command')
-        $optionCommandKey.SetValue('', (Get-ShrinkCommand ([string]$targetMb)))
+        $optionCommandKey.SetValue('', (Get-ShrinkCommand ([string]$targetMb) $guiEnabled))
         $optionCommandKey.Close()
         $optionKey.Close()
     }
@@ -152,12 +164,12 @@ if ($null -eq $optionsInitialized -and $existingOptionKeyNames.Count -eq 0) {
 
 $extraKey.SetValue('OptionsInitialized', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
 
-$addCustomKey = $extraShellKey.CreateSubKey('zz_AddCustom')
-$addCustomKey.SetValue('MUIVerb', 'Add custom...')
-$addCustomCommandKey = $addCustomKey.CreateSubKey('command')
-$addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$FileSizeOptionsManagerBatPath`"`"")
-$addCustomCommandKey.Close()
-$addCustomKey.Close()
+$customizeKey = $extraShellKey.CreateSubKey('zz_Customize')
+$customizeKey.SetValue('MUIVerb', 'Customize...')
+$customizeCommandKey = $customizeKey.CreateSubKey('command')
+$customizeCommandKey.SetValue('', "cmd.exe /d /c `"`"$ExtrasManagerBatPath`"`"")
+$customizeCommandKey.Close()
+$customizeKey.Close()
 
 $extraShellKey.Close()
 $extraKey.Close()
@@ -171,7 +183,7 @@ Write-Host ""
 Write-Host "  All done! Right-click any video file and choose" -ForegroundColor White
 Write-Host "  'Shrink for Discord' to compress it." -ForegroundColor White
 Write-Host "  Use 'Shrink For Discord Extra' for another target size." -ForegroundColor White
-Write-Host "  Choose 'Add custom...' there to manage the size list." -ForegroundColor White
+Write-Host "  Choose 'Customize...' there to manage extra options." -ForegroundColor White
 Write-Host ""
 Write-Host "  Note: You can now delete these installation files if you wish." -ForegroundColor DarkGray
 Write-Host ""

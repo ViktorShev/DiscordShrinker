@@ -23,11 +23,11 @@ Compresses video files to a configurable target size. Designed for sharing gamin
    - `DiscordShrinker.exe`
    - `install.bat` (proxy to execute the .ps1 script)
    - `uninstall.bat` (also a proxy)
-   - `filesize-options-manager.bat` (proxy for managing submenu sizes)
+   - `extras-manager.bat` (proxy for managing context-menu options)
    - `assets/icon.ico`
    - `scripts/install.ps1`
    - `scripts/uninstall.ps1`
-   - `scripts/filesize-options-manager.ps1`
+   - `scripts/extras-manager.ps1`
    - `scripts/gui.ps1`
 2. Double-click **`install.bat`**
 
@@ -35,7 +35,7 @@ The installer will:
 - Install **FFmpeg** via `winget` if it isn't already on your system
 - Copy the app to `%LOCALAPPDATA%\DiscordShrinker\`
 - Add a **"Shrink for Discord"** entry targeting 20 MB to the right-click context menu for all files
-- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets plus an **"Add custom..."** manager
+- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets plus a **"Customize..."** extras manager
 
 > The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
 
@@ -49,7 +49,7 @@ Right-click any video file → **Show more options** → **Shrink for Discord**.
 
 For another target, open **Shrink For Discord Extra** and choose 8, 10, 20, 50, 100, or 500 MB.
 
-Choose **Add custom...** at the bottom of that submenu to manage all extra size options. You can add a target at any menu position, remove any target, or restore the default 8, 10, 20, 50, 100, and 500 MB list. New targets are added at the bottom unless you enter another position; **Add custom...** always remains last.
+Choose **Customize...** at the bottom of that submenu to manage all extra options. You can add a target at any menu position, remove any target, restore the default 8, 10, 20, 50, 100, and 500 MB list, or disable the GUI so context-menu compression runs with debug terminal output. New targets are added at the bottom unless you enter another position; **Customize...** always remains last.
 
 A small native Windows progress window opens while the video is processed and closes shortly after a successful result. Errors remain visible until dismissed. The compressed file appears next to the original.
 

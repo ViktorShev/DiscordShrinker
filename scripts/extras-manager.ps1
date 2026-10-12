@@ -6,8 +6,9 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $InstallDir = Split-Path -Parent $ScriptDir
 $ExePath = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath = Join-Path $InstallDir 'icon.ico'
-$FileSizeOptionsManagerBatPath = Join-Path $InstallDir 'filesize-options-manager.bat'
+$ExtrasManagerBatPath = Join-Path $InstallDir 'extras-manager.bat'
 $GuiPs1Path = Join-Path $ScriptDir 'gui.ps1'
+$MainMenuRegistryPath = '*\shell\ShrinkForDiscord'
 $ExtraMenuRegistryPath = '*\shell\ShrinkForDiscordExtra'
 $MinimumTargetMb = 0.5
 $InvariantCulture = [System.Globalization.CultureInfo]::InvariantCulture
@@ -18,9 +19,27 @@ function Write-Ok   { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Gr
 function Write-Fail { param($Text) Write-Host "  [!!] $Text" -ForegroundColor Red }
 
 function Get-ShrinkCommand {
-    param([string]$TargetMb)
+    param(
+        [string]$TargetMb,
+        [bool]$GuiEnabled
+    )
 
-    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    if ($GuiEnabled) {
+        return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    }
+
+    return "`"$ExePath`" `"%1`" --targetMb $TargetMb"
+}
+
+function Write-MainShrinkCommand {
+    param(
+        [Microsoft.Win32.RegistryKey]$MainKey,
+        [bool]$GuiEnabled
+    )
+
+    $commandKey = $MainKey.CreateSubKey('command')
+    $commandKey.SetValue('', (Get-ShrinkCommand '20' $GuiEnabled))
+    $commandKey.Close()
 }
 
 function New-ActionResult {
@@ -64,7 +83,7 @@ function Get-ExtraFileSizeOptions {
     $targetSizesMb = @()
 
     foreach ($subKeyName in ($ExtraShellKey.GetSubKeyNames() | Sort-Object)) {
-        if ($subKeyName -eq 'zz_AddCustom') {
+        if ($subKeyName -eq 'zz_Customize') {
             continue
         }
 
@@ -90,7 +109,8 @@ function Get-ExtraFileSizeOptions {
 function Write-ExtraFileSizeOptions {
     param(
         [Microsoft.Win32.RegistryKey]$ExtraShellKey,
-        [string[]]$TargetSizesMb
+        [string[]]$TargetSizesMb,
+        [bool]$GuiEnabled
     )
 
     foreach ($subKeyName in $ExtraShellKey.GetSubKeyNames()) {
@@ -104,17 +124,17 @@ function Write-ExtraFileSizeOptions {
         $optionKey.SetValue('MUIVerb', "$targetMb MB")
         $optionKey.SetValue('TargetMb', $targetMb)
         $commandKey = $optionKey.CreateSubKey('command')
-        $commandKey.SetValue('', (Get-ShrinkCommand $targetMb))
+        $commandKey.SetValue('', (Get-ShrinkCommand $targetMb $GuiEnabled))
         $commandKey.Close()
         $optionKey.Close()
     }
 
-    $addCustomKey = $ExtraShellKey.CreateSubKey('zz_AddCustom')
-    $addCustomKey.SetValue('MUIVerb', 'Add custom...')
-    $addCustomCommandKey = $addCustomKey.CreateSubKey('command')
-    $addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$FileSizeOptionsManagerBatPath`"`"")
-    $addCustomCommandKey.Close()
-    $addCustomKey.Close()
+    $customizeKey = $ExtraShellKey.CreateSubKey('zz_Customize')
+    $customizeKey.SetValue('MUIVerb', 'Customize...')
+    $customizeCommandKey = $customizeKey.CreateSubKey('command')
+    $customizeCommandKey.SetValue('', "cmd.exe /d /c `"`"$ExtrasManagerBatPath`"`"")
+    $customizeCommandKey.Close()
+    $customizeKey.Close()
 }
 
 function Show-CurrentOptions {
@@ -136,7 +156,8 @@ function Show-CurrentOptions {
 function Add-ExtraFileSizeOption {
     param(
         [Microsoft.Win32.RegistryKey]$ExtraShellKey,
-        [string[]]$TargetSizesMb
+        [string[]]$TargetSizesMb,
+        [bool]$GuiEnabled
     )
 
     Write-Host ""
@@ -173,14 +194,15 @@ function Add-ExtraFileSizeOption {
     }
     $updatedOptions.Insert($position - 1, $targetMb)
 
-    Write-ExtraFileSizeOptions $ExtraShellKey $updatedOptions.ToArray()
+    Write-ExtraFileSizeOptions $ExtraShellKey $updatedOptions.ToArray() $GuiEnabled
     return New-ActionResult "Added $targetMb MB at position $position." $true
 }
 
 function Remove-ExtraFileSizeOption {
     param(
         [Microsoft.Win32.RegistryKey]$ExtraShellKey,
-        [string[]]$TargetSizesMb
+        [string[]]$TargetSizesMb,
+        [bool]$GuiEnabled
     )
 
     if ($TargetSizesMb.Count -eq 0) {
@@ -203,12 +225,15 @@ function Remove-ExtraFileSizeOption {
     $removedTargetMb = $updatedOptions[$selection - 1]
     $updatedOptions.RemoveAt($selection - 1)
 
-    Write-ExtraFileSizeOptions $ExtraShellKey $updatedOptions.ToArray()
+    Write-ExtraFileSizeOptions $ExtraShellKey $updatedOptions.ToArray() $GuiEnabled
     return New-ActionResult "Removed $removedTargetMb MB." $true
 }
 
 function Restore-DefaultExtraFileSizeOptions {
-    param([Microsoft.Win32.RegistryKey]$ExtraShellKey)
+    param(
+        [Microsoft.Win32.RegistryKey]$ExtraShellKey,
+        [bool]$GuiEnabled
+    )
 
     Write-Host ""
     $confirmation = (Read-Host '  Remove all current options and restore the defaults? (y/N)').Trim()
@@ -216,7 +241,7 @@ function Restore-DefaultExtraFileSizeOptions {
         return New-ActionResult 'Revert canceled; no changes were made.' $true
     }
 
-    Write-ExtraFileSizeOptions $ExtraShellKey $DefaultTargetSizesMb
+    Write-ExtraFileSizeOptions $ExtraShellKey $DefaultTargetSizesMb $GuiEnabled
     return New-ActionResult 'Restored the default options: 8, 10, 20, 50, 100, and 500 MB.' $true
 }
 
@@ -235,6 +260,7 @@ if (-not (Test-Path $GuiPs1Path)) {
 }
 
 $classesKey = $null
+$mainKey = $null
 $extraKey = $null
 $extraShellKey = $null
 
@@ -244,6 +270,10 @@ try {
         throw 'Could not open the current user registry classes key.'
     }
 
+    $mainKey = $classesKey.CreateSubKey($MainMenuRegistryPath)
+    $mainKey.SetValue('', 'Shrink for Discord')
+    $mainKey.SetValue('Icon', $IconPath)
+
     $extraKey = $classesKey.CreateSubKey($ExtraMenuRegistryPath)
     $extraKey.SetValue('MUIVerb', 'Shrink For Discord Extra')
     $extraKey.SetValue('Icon', $IconPath)
@@ -251,17 +281,22 @@ try {
     $extraKey.SetValue('OptionsInitialized', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
     $extraShellKey = $extraKey.CreateSubKey('shell')
 
-    # Repair or add the management command whenever the manager opens.
+    $guiEnabledValue = $extraKey.GetValue('GuiEnabled')
+    $guiEnabled = if ($null -eq $guiEnabledValue) { $true } else { [int]$guiEnabledValue -ne 0 }
+    $extraKey.SetValue('GuiEnabled', [int]$guiEnabled, [Microsoft.Win32.RegistryValueKind]::DWord)
+
+    # Repair all commands whenever the manager opens.
     $currentOptions = @(Get-ExtraFileSizeOptions $extraShellKey)
-    Write-ExtraFileSizeOptions $extraShellKey $currentOptions
+    Write-MainShrinkCommand $mainKey $guiEnabled
+    Write-ExtraFileSizeOptions $extraShellKey $currentOptions $guiEnabled
 
     $lastAction = $null
 
     while ($true) {
         Clear-Host
         Write-Host ""
-        Write-Host "  DiscordShrinker File Size Options Manager" -ForegroundColor White
-        Write-Host "  -------------------------------------------" -ForegroundColor DarkGray
+        Write-Host "  DiscordShrinker Extras Manager" -ForegroundColor White
+        Write-Host "  --------------------------------" -ForegroundColor DarkGray
 
         if ($null -ne $lastAction) {
             Write-Host ""
@@ -278,17 +313,34 @@ try {
         Write-Host "    A. Add a custom size"
         Write-Host "    R. Remove a size"
         Write-Host "    D. Revert to defaults"
+        if ($guiEnabled) {
+            Write-Host "    G. Disable GUI (enable debug mode)"
+        } else {
+            Write-Host "    G. Enable GUI (disable debug mode)"
+        }
         Write-Host "    Q. Exit"
         Write-Host ""
 
         $action = (Read-Host '  Choose an action').Trim().ToUpperInvariant()
 
         switch ($action) {
-            'A' { $lastAction = Add-ExtraFileSizeOption $extraShellKey $currentOptions }
-            'R' { $lastAction = Remove-ExtraFileSizeOption $extraShellKey $currentOptions }
-            'D' { $lastAction = Restore-DefaultExtraFileSizeOptions $extraShellKey }
+            'A' { $lastAction = Add-ExtraFileSizeOption $extraShellKey $currentOptions $guiEnabled }
+            'R' { $lastAction = Remove-ExtraFileSizeOption $extraShellKey $currentOptions $guiEnabled }
+            'D' { $lastAction = Restore-DefaultExtraFileSizeOptions $extraShellKey $guiEnabled }
+            'G' {
+                $guiEnabled = -not $guiEnabled
+                $extraKey.SetValue('GuiEnabled', [int]$guiEnabled, [Microsoft.Win32.RegistryValueKind]::DWord)
+                Write-MainShrinkCommand $mainKey $guiEnabled
+                Write-ExtraFileSizeOptions $extraShellKey $currentOptions $guiEnabled
+
+                if ($guiEnabled) {
+                    $lastAction = New-ActionResult 'GUI enabled; context-menu compression will use the progress window.' $true
+                } else {
+                    $lastAction = New-ActionResult 'GUI disabled; context-menu compression will run in debug mode.' $true
+                }
+            }
             'Q' { break }
-            default { $lastAction = New-ActionResult 'Choose A, R, D, or Q.' $false }
+            default { $lastAction = New-ActionResult 'Choose A, R, D, G, or Q.' $false }
         }
 
         if ($action -eq 'Q') {
@@ -303,5 +355,6 @@ try {
 } finally {
     if ($null -ne $extraShellKey) { $extraShellKey.Close() }
     if ($null -ne $extraKey) { $extraKey.Close() }
+    if ($null -ne $mainKey) { $mainKey.Close() }
     if ($null -ne $classesKey) { $classesKey.Close() }
 }
