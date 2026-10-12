@@ -38,7 +38,6 @@ DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--gui <progress-file>]
 | `--gui <progress-file>` | Writes JSONL progress events to the supplied file and disables terminal debug output. Used by the Windows Forms progress window when launching its worker process. |
 
 Command-line execution shows FFmpeg progress and debug output in the terminal by default.
-
 Context-menu execution is set up to automatically provide the `--gui` flag.
 
 ## Building from source
@@ -47,8 +46,8 @@ Requires [Bun](https://bun.sh) and [FFmpeg](https://ffmpeg.org).
 
 ```bash
 bun install
-bun run compile
-bun run bundle
+bun compile
+bun release
 ```
 
 To run from source without compiling
@@ -59,4 +58,4 @@ bun src/index.ts <file-path> [--targetMb <megabytes>]
 
 ## Uninstalling
 
-Run `uninstall.bat` found in the installation folder.
+Run `uninstall.bat` found in the installation folder (`%LOCALAPPDATA%\DiscordShrinker`).
