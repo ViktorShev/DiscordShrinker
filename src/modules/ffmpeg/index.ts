@@ -1,11 +1,12 @@
 import {
+  MAX_FILE_SIZE_IN_BYTES_FREE,
   REQUIRED_AUDIO_ENCODERS,
   REQUIRED_VIDEO_ENCODERS,
 } from "../../constants"
 import { ffmpeg, ffprobe } from "../cmd"
 import { debug } from "../log"
 import { isFileUnderLimit, probeMedia, type MediaMetadata } from "./probe"
-import { downscale, MIN_FPS, MIN_HEIGHT, MIN_WIDTH, OUTPUT_FILE_PATH, TARGET_AUDIO_BITRATE, TARGET_VIDEO_BITRATE, twoPassEncodeUntilUnderLimit } from "./encode"
+import { downscale, MAX_AUDIO_BITRATE, MIN_FPS, MIN_HEIGHT, MIN_WIDTH, OUTPUT_FILE_PATH, TARGET_AUDIO_BITRATE, TARGET_VIDEO_BITRATE, twoPassEncodeUntilUnderLimit } from "./encode"
 
 async function ensureFFmpegAvailable(): Promise<void> {
   const { stdout: ffmpegVersion } = await ffmpeg(['-version'])
@@ -50,8 +51,8 @@ export async function validateFFmpegSetup(): Promise<void> {
 async function handleTwoPassOnlyStrategy(metadata: MediaMetadata, maxFileSizeInBytes: number): Promise<void> {
   const inputFilePath = metadata.filePath
   const outputFilePath = OUTPUT_FILE_PATH(inputFilePath)
-  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, metadata.audioBitrate, maxFileSizeInBytes)
   const targetAudioBitrate = TARGET_AUDIO_BITRATE(metadata.audioBitrate)
+  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, targetAudioBitrate, maxFileSizeInBytes)
 
   await twoPassEncodeUntilUnderLimit({
     inputFilePath,
@@ -63,12 +64,11 @@ async function handleTwoPassOnlyStrategy(metadata: MediaMetadata, maxFileSizeInB
   })
 }
 
-async function handleDownscaleStrategy(metadata: MediaMetadata, maxFileSizeInBytes: number): Promise<void> {
+async function handleDownscaleTwoPassStrategy(metadata: MediaMetadata, maxFileSizeInBytes: number): Promise<void> {
   const inputFilePath = metadata.filePath
   const outputFilePath = OUTPUT_FILE_PATH(inputFilePath)
 
-  const targetWidth = Math.min(metadata.width, MIN_WIDTH)
-  const targetHeight = Math.min(metadata.height, MIN_HEIGHT)
+  const { width: targetWidth, height: targetHeight } = getDownscaleResolution(metadata)
 
   // Best case scenario, we just need to downscale without re-encoding
   await downscale({
@@ -86,8 +86,8 @@ async function handleDownscaleStrategy(metadata: MediaMetadata, maxFileSizeInByt
   // If downscaling alone wasn't enough, we run two pass encoding with retries + downscaling
   debug('Downscaling alone was not sufficient to get under the file size limit. Starting two-pass encoding with downscaling and bitrate reduction...')
 
-  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, metadata.audioBitrate, maxFileSizeInBytes)
   const targetAudioBitrate = TARGET_AUDIO_BITRATE(metadata.audioBitrate)
+  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, targetAudioBitrate, maxFileSizeInBytes)
 
   let shouldReduceFps = false
 
@@ -138,31 +138,91 @@ async function handleDownscaleStrategy(metadata: MediaMetadata, maxFileSizeInByt
 
 enum CompressionStrategy {
   TwoPassOnly = 'two-pass-only',
-  Downscale = 'downscale',
+  DownscaleTwoPass = 'downscale-two-pass',
 }
 
-const TWO_PASS_ONLY_MAX_VIDEO_DURATION = 30
 
-async function determineCompressionStrategy(metadata: MediaMetadata): Promise<CompressionStrategy> {
-  if (metadata.durationSeconds <= TWO_PASS_ONLY_MAX_VIDEO_DURATION) {
+const FOUR_K_LONG_EDGE = 3840
+const FULL_HD_WIDTH = 1920
+const FULL_HD_HEIGHT = 1080
+
+// A pressure of 1 recreates the old 20 MiB / 30 second cutoff for a 1080p60 video.
+// Other targets, durations, resolutions, and frame rates scale continuously from that baseline.
+const DOWNSCALE_COMPRESSION_PRESSURE_THRESHOLD = 1
+
+export function getCompressionPressure(metadata: MediaMetadata, maxFileSizeInBytes: number): number {
+  const refDurationSeconds = 30
+  const refWidth = 1920
+  const refHeight = 1080
+  const refFps = 60
+  
+  // Reference video values
+  const refVideoBitrate = TARGET_VIDEO_BITRATE(
+    refDurationSeconds,
+    MAX_AUDIO_BITRATE,
+    MAX_FILE_SIZE_IN_BYTES_FREE,
+  )
+  const refBitsPerPixelPerFrame = refVideoBitrate / (refWidth * refHeight * refFps)
+
+  // Actual video values
+  const targetAudioBitrate = TARGET_AUDIO_BITRATE(metadata.audioBitrate)
+  const targetVideoBitrate = TARGET_VIDEO_BITRATE(metadata.durationSeconds, targetAudioBitrate, maxFileSizeInBytes)
+
+  if (targetVideoBitrate <= 0) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  const targetBitsPerPixelPerFrame = targetVideoBitrate / (metadata.width * metadata.height * metadata.fps)
+
+  return refBitsPerPixelPerFrame / targetBitsPerPixelPerFrame
+}
+
+function getDownscaleResolution(metadata: MediaMetadata): { width: number, height: number } {
+  const isPortrait = metadata.height > metadata.width
+  const isFourKOrHigher = Math.max(metadata.width, metadata.height) >= FOUR_K_LONG_EDGE
+
+  const landscapeTarget = isFourKOrHigher
+    ? { width: FULL_HD_WIDTH, height: FULL_HD_HEIGHT }
+    : { width: MIN_WIDTH, height: MIN_HEIGHT }
+
+  const orientedTarget = isPortrait
+    ? { width: landscapeTarget.height, height: landscapeTarget.width }
+    : landscapeTarget
+
+  return {
+    width: Math.min(metadata.width, orientedTarget.width),
+    height: Math.min(metadata.height, orientedTarget.height),
+  }
+}
+
+function determineCompressionStrategy(metadata: MediaMetadata, maxFileSizeInBytes: number): CompressionStrategy {
+  const shortEdge = Math.min(metadata.width, metadata.height)
+  const longEdge = Math.max(metadata.width, metadata.height)
+
+  if (shortEdge <= MIN_HEIGHT && longEdge <= MIN_WIDTH) {
     return CompressionStrategy.TwoPassOnly
   }
 
-  if (metadata.width <= MIN_WIDTH && metadata.height <= MIN_HEIGHT) {
-    return CompressionStrategy.TwoPassOnly
-  }
+  const compressionPressure = getCompressionPressure(metadata, maxFileSizeInBytes)
 
-  return CompressionStrategy.Downscale
+  debug('Calculated compression pressure:', {
+    compressionPressure,
+    threshold: DOWNSCALE_COMPRESSION_PRESSURE_THRESHOLD,
+  })
+
+  return compressionPressure > DOWNSCALE_COMPRESSION_PRESSURE_THRESHOLD
+    ? CompressionStrategy.DownscaleTwoPass
+    : CompressionStrategy.TwoPassOnly
 }
 
 const CompressionStrategyToHandler = {
   [CompressionStrategy.TwoPassOnly]: handleTwoPassOnlyStrategy,
-  [CompressionStrategy.Downscale]: handleDownscaleStrategy,
+  [CompressionStrategy.DownscaleTwoPass]: handleDownscaleTwoPassStrategy,
 }
 
 export async function shrinkVideo(filePath: string, maxFileSizeInBytes: number): Promise<void> {
   const metadata = await probeMedia(filePath)
-  const strategy = await determineCompressionStrategy(metadata)
+  const strategy = determineCompressionStrategy(metadata, maxFileSizeInBytes)
 
   debug('Starting compression with strategy:', strategy)
   await CompressionStrategyToHandler[strategy](metadata, maxFileSizeInBytes)

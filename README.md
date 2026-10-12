@@ -7,9 +7,11 @@ Compresses video files to a configurable target size. Designed for sharing gamin
 - Targets just under Discord's 20 MB free upload limit by default while preserving as much quality as possible
 - Supports custom target sizes through the `--targetMb` command-line option
 - Uses **AV1** video encoding (`libsvtav1`) and **Opus** audio encoding (`libopus`) for best quality at low bitrates
-- Automatically picks a compression strategy based on the video:
-  - Short clips (≤ 30s) or already small resolution → two-pass bitrate encoding
-  - Longer / high-res videos → downscales to 720p, then two-pass encodes, then reduces FPS to 30 as a last resort if needed (which will probably never happen)
+- Automatically picks a compression strategy based on the target size, duration, resolution, and FPS:
+  - Videos with enough target bitrate for their pixel rate → two-pass encoding at the original resolution
+  - Constrained 4K-or-higher videos → downscales to 1080p before two-pass encoding
+  - Other constrained high-res videos → downscales to 720p before two-pass encoding
+  - Reduces FPS to 30 as a last resort if the selected strategy still exceeds the target (which will probably never happen)
 - Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
 - Skips compression entirely if the file is already under the selected target size
 - Output file is saved as `<original name>_shrunk.mp4` next to the original
