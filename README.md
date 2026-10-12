@@ -14,6 +14,7 @@ Compresses video files to a configurable target size. Designed for sharing gamin
   - Reduces FPS to 30 as a last resort if the selected strategy still exceeds the target (which will probably never happen)
 - Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
 - Skips compression entirely if the file is already under the selected target size
+- Shows compression progress in a compact native Windows window for context-menu runs, with verbose logs and live FFmpeg output for terminal runs
 - Output file is saved as `<original name>_shrunk.mp4` next to the original
 
 ## Installation (Windows)
@@ -22,11 +23,12 @@ Compresses video files to a configurable target size. Designed for sharing gamin
    - `DiscordShrinker.exe`
    - `install.bat` (proxy to execute the .ps1 script)
    - `uninstall.bat` (also a proxy)
-   - `manage-extra-filesize-options.bat` (proxy for managing custom submenu sizes)
+   - `filesize-options-manager.bat` (proxy for managing submenu sizes)
    - `assets/icon.ico`
    - `scripts/install.ps1`
    - `scripts/uninstall.ps1`
-   - `scripts/manage-extra-filesize-options.ps1`
+   - `scripts/filesize-options-manager.ps1`
+   - `scripts/progress-window.ps1`
 2. Double-click **`install.bat`**
 
 The installer will:
@@ -47,20 +49,22 @@ Right-click any video file → **Show more options** → **Shrink for Discord**.
 
 For another target, open **Shrink For Discord Extra** and choose 8, 10, 20, 50, 100, or 500 MB.
 
-Choose **Add custom...** at the bottom of that submenu to manage all extra size options. You can add a target at any menu position or remove either a default or custom target. New targets are added at the bottom unless you enter another position; **Add custom...** always remains last.
+Choose **Add custom...** at the bottom of that submenu to manage all extra size options. You can add a target at any menu position, remove any target, or restore the default 8, 10, 20, 50, 100, and 500 MB list. New targets are added at the bottom unless you enter another position; **Add custom...** always remains last.
 
-A terminal window will open, show progress, and close when done. The compressed file appears next to the original.
+A small native Windows progress window opens while the video is processed and closes shortly after a successful result. Errors remain visible until dismissed. The compressed file appears next to the original.
 
 ### Command line
 
 ```
-DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--debug]
+DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--gui <progress-file>]
 ```
 
 | Flag | Description |
 |---|---|
 | `--targetMb <megabytes>` | Set the maximum output file size in MiB (defaults to 20) |
-| `--debug` | Print verbose FFmpeg output and internal logs |
+| `--gui <progress-file>` | Run as the native window's hidden worker and write JSON-lines progress events to the supplied file |
+
+Command-line runs default to verbose terminal output with live FFmpeg progress. The installed right-click menu launches the native progress window, which supplies `--gui` when starting its hidden worker.
 
 ## Building from source
 

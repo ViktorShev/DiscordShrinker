@@ -1,44 +1,41 @@
 import { getCLIArgs } from "./modules/cli"
-import { debug, setDebugEnabled } from "./modules/log"
-import { setSpinnerEnabled, spin, spinSuccess, spinError, isSpinnerEnabled } from "./modules/spinner"
+import { isDebugEnabled, setDebugEnabled } from "./modules/log"
 
 import { BYTES_PER_MB, MAX_FILE_SIZE_IN_BYTES_FREE, MAX_FILE_SIZE_IN_MB_FREE } from "./constants"
 
 import { isFileUnderLimit } from "./modules/ffmpeg/probe"
 import { validateFFmpegSetup, shrinkVideo } from "./modules/ffmpeg"
-import { pause } from "./modules/misc";
+import { reportError, reportStage, reportSuccess, setProgressFile } from "./modules/progress"
 
 async function main(): Promise<void> {
-  const { filepath, debugEnabled, targetMb } = getCLIArgs()
+  const { filepath, targetMb, guiProgressFile } = getCLIArgs()
+
+  setDebugEnabled(!guiProgressFile)
+  setProgressFile(guiProgressFile)
+
   const maxFileSizeInBytes = targetMb === MAX_FILE_SIZE_IN_MB_FREE
     ? MAX_FILE_SIZE_IN_BYTES_FREE
     : targetMb * BYTES_PER_MB
   const maxFileSizeStr = `${targetMb} MiB`
 
-  setDebugEnabled(debugEnabled)
-  setSpinnerEnabled(!debugEnabled)
-
-  spin('Checking FFmpeg setup...')
+  reportStage('Checking FFmpeg setup...')
   await validateFFmpegSetup()
 
   if (await isFileUnderLimit(filepath, maxFileSizeInBytes)) {
-    spinSuccess(`File is already within the ${maxFileSizeStr} limit.`)
-    debug(`File is already within the ${maxFileSizeStr} limit.`)
-    await pause(2000)
+    const message = `File is already within the ${maxFileSizeStr} limit.`
+    reportSuccess(message)
     return
   }
 
+  reportStage('Analyzing video...')
   await shrinkVideo(filepath, maxFileSizeInBytes)
-  spinSuccess('Video compressed successfully!')
-  await pause(2000)
+  reportSuccess('Video compressed successfully!')
 }
 
-main().catch(async error => {
-	const message = error instanceof Error ? error.message : String(error)
-	spinError(message)
-	if (!isSpinnerEnabled()) console.error(message)
-	process.exitCode = 1
+main().catch(error => {
+  const message = error instanceof Error ? error.message : String(error)
+  reportError(message)
 
-  await pause(10000)
+  process.exitCode = 1
 })
 

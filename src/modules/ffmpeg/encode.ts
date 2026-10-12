@@ -1,11 +1,11 @@
 import { basename, dirname, extname, join } from "path"
 import { METADATA_OVERHEAD_IN_BYTES, NULL_DEVICE_PATH } from "../../constants"
 import { debug } from "../log"
-import { spin } from "../spinner"
 import { mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
 import { ffmpeg } from "../cmd"
 import { safeNumber } from "../misc"
+import { reportProgress, reportStage } from "../progress"
 import { isFileUnderLimit } from "./probe"
 
 export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number, maxFileSizeInBytes: number): number {
@@ -64,11 +64,13 @@ type TwoPassEncodeOptions = {
   inputFilePath: string
   outputFilePath: string
   maxFileSizeInBytes: number
+  durationSeconds: number
   targetVideoBitrate: number
   targetAudioBitrate: number
   targetResolution?: { width: number, height: number }
   targetFps?: number
   removeAudio: boolean
+  attemptNumber?: number
 }
 
 async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
@@ -81,7 +83,6 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   }
 
   const targetAudioBitrate = safeNumber(Math.floor(options.targetAudioBitrate))
-
   const videoFilterArg = options.targetResolution ? DOWNSCALE_VIDEO_FILTER(options.targetResolution.width, options.targetResolution.height, options.targetFps) : undefined
 
   const sharedArgs = [
@@ -110,16 +111,24 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
   })
 
   try {
-    spin('Two-pass encoding (pass 1 of 2)...')
-    const { stdout, stderr } = await ffmpeg(firstPassArgs)
-    debug('Ran first pass:\n', stdout, stderr)
+    const attemptSuffix = options.attemptNumber ? ` (attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES})` : ''
 
-    spin('Two-pass encoding (pass 2 of 2)...')
-    const { stdout: stdout2, stderr: stderr2 } = await ffmpeg(secondPassArgs)
-    debug('Ran second pass:\n', stdout2, stderr2)
+    reportStage(`Encoding video - pass 1 of 2${attemptSuffix}`, true)
+    await ffmpeg(firstPassArgs, {
+      videoDurationSeconds: options.durationSeconds,
+      onProgress: reportProgress,
+    })
+    debug('Completed first encoding pass.')
+
+    reportStage(`Encoding video - pass 2 of 2${attemptSuffix}`, true)
+    await ffmpeg(secondPassArgs, {
+      videoDurationSeconds: options.durationSeconds,
+      onProgress: reportProgress,
+    })
+    debug('Completed second encoding pass.')
   } finally {
     try {
-      spin('Cleaning up temporary files...')
+      reportStage('Cleaning up temporary files...')
       debug('Removing temp directory')
       await rm(tempDirectory, { recursive: true, force: true })
     } catch (cleanupError) {
@@ -134,6 +143,7 @@ type DownscaleOptions = {
   targetWidth: number
   targetHeight: number
   targetFps?: number
+  durationSeconds: number
 }
 
 export async function downscale(options: DownscaleOptions): Promise<void> {
@@ -149,8 +159,11 @@ export async function downscale(options: DownscaleOptions): Promise<void> {
 
   debug('Starting fast downscale encode with args:', args)
 
-  spin('Downscaling...')
-  await ffmpeg(args)
+  reportStage('Downscaling video...', true)
+  await ffmpeg(args, {
+    videoDurationSeconds: options.durationSeconds,
+    onProgress: reportProgress,
+  })
 }
 
 const MAX_TWO_PASS_RETRIES = 3
@@ -162,6 +175,7 @@ export async function twoPassEncodeUntilUnderLimit(options: TwoPassEncodeOptions
     const adjustedOptions: TwoPassEncodeOptions = {
       ...options,
       targetVideoBitrate,
+      attemptNumber: attempt + 1,
     }
 
     debug(`Starting two-pass attempt ${attempt} with options:`, adjustedOptions)

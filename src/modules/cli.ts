@@ -3,19 +3,18 @@ import { BYTES_PER_MB, MAX_FILE_SIZE_IN_MB_FREE, METADATA_OVERHEAD_IN_BYTES } fr
 
 type CLIArgs = {
   filepath: string // Filepath
-  debugEnabled: boolean // Log debug info and FFmpeg output
   targetMb: number // Maximum output file size in MiB
+  guiProgressFile?: string // JSON-lines progress channel used by the native Windows UI
 }
 
 export function getCLIArgs(args: string[] = process.argv.slice(2)): CLIArgs {
   const { values, positionals } = parseArgs({
     args,
     options: {
-      debug: {
-        type: 'boolean',
-        default: false,
-      },
       targetMb: {
+        type: 'string',
+      },
+      gui: {
         type: 'string',
       },
     },
@@ -26,7 +25,7 @@ export function getCLIArgs(args: string[] = process.argv.slice(2)): CLIArgs {
   const filepath = positionals[0]
 
   if (!filepath) {
-    throw new Error('No file path provided. Usage: bun src/index.ts <file-path> [--targetMb <megabytes>] [--debug]')
+    throw new Error('No file path provided. Usage: bun src/index.ts <file-path> [--targetMb <megabytes>] [--gui <progress-file>]')
   }
 
   if (positionals.length > 1) {
@@ -44,5 +43,9 @@ export function getCLIArgs(args: string[] = process.argv.slice(2)): CLIArgs {
     }
   }
 
-  return { filepath, debugEnabled: values.debug, targetMb }
+  return {
+    filepath,
+    targetMb,
+    guiProgressFile: values.gui,
+  }
 }

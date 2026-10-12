@@ -12,8 +12,5 @@
   "type": "module",
   "scripts": {
     "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile dist/DiscordShrinker && bun set-icon.js"
-  },
-  "dependencies": {
-    "yocto-spinner": "^1.2.0"
   }
 }

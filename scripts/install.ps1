@@ -9,8 +9,9 @@ $ExeSource          = Join-Path $RootDir 'DiscordShrinker.exe'
 $IconSource         = Join-Path $RootDir 'assets\icon.ico'
 $UninstallBatSource = Join-Path $RootDir 'uninstall.bat'
 $UninstallPs1Source = Join-Path $ScriptDir 'uninstall.ps1'
-$ManageExtraFileSizeOptionsBatSource = Join-Path $RootDir 'manage-extra-filesize-options.bat'
-$ManageExtraFileSizeOptionsPs1Source = Join-Path $ScriptDir 'manage-extra-filesize-options.ps1'
+$FileSizeOptionsManagerBatSource = Join-Path $RootDir 'filesize-options-manager.bat'
+$FileSizeOptionsManagerPs1Source = Join-Path $ScriptDir 'filesize-options-manager.ps1'
+$ProgressWindowPs1Source = Join-Path $ScriptDir 'progress-window.ps1'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok    { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
@@ -44,13 +45,18 @@ if (-not (Test-Path $UninstallPs1Source)) {
     exit 1
 }
 
-if (-not (Test-Path $ManageExtraFileSizeOptionsBatSource)) {
-    Write-Fail "manage-extra-filesize-options.bat not found next to the install script."
+if (-not (Test-Path $FileSizeOptionsManagerBatSource)) {
+    Write-Fail "filesize-options-manager.bat not found next to the install script."
     exit 1
 }
 
-if (-not (Test-Path $ManageExtraFileSizeOptionsPs1Source)) {
-    Write-Fail "scripts\manage-extra-filesize-options.ps1 not found next to the install script."
+if (-not (Test-Path $FileSizeOptionsManagerPs1Source)) {
+    Write-Fail "scripts\filesize-options-manager.ps1 not found next to the install script."
+    exit 1
+}
+
+if (-not (Test-Path $ProgressWindowPs1Source)) {
+    Write-Fail "scripts\progress-window.ps1 not found next to the install script."
     exit 1
 }
 
@@ -89,12 +95,20 @@ Copy-Item -Path $ExeSource          -Destination $InstallDir -Force
 Copy-Item -Path $IconSource         -Destination $InstallDir -Force
 Copy-Item -Path $UninstallBatSource -Destination $InstallDir -Force
 Copy-Item -Path $UninstallPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
-Copy-Item -Path $ManageExtraFileSizeOptionsBatSource -Destination $InstallDir -Force
-Copy-Item -Path $ManageExtraFileSizeOptionsPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
+Copy-Item -Path $FileSizeOptionsManagerBatSource -Destination $InstallDir -Force
+Copy-Item -Path $FileSizeOptionsManagerPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
+Copy-Item -Path $ProgressWindowPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 
 $ExePath                            = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath                           = Join-Path $InstallDir 'icon.ico'
-$ManageExtraFileSizeOptionsBatPath = Join-Path $InstallDir 'manage-extra-filesize-options.bat'
+$FileSizeOptionsManagerBatPath     = Join-Path $InstallDir 'filesize-options-manager.bat'
+$ProgressWindowPs1Path             = Join-Path $InstallDir 'scripts\progress-window.ps1'
+
+function Get-ShrinkCommand {
+    param([string]$TargetMb)
+
+    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$ProgressWindowPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+}
 
 Write-Ok "Files copied."
 
@@ -107,7 +121,7 @@ $shellKey    = $classesKey.CreateSubKey('*\shell\ShrinkForDiscord')
 $shellKey.SetValue('', 'Shrink for Discord')
 $shellKey.SetValue('Icon', $IconPath)
 $cmdKey = $shellKey.CreateSubKey('command')
-$cmdKey.SetValue('', "`"$ExePath`" `"%1`"")
+$cmdKey.SetValue('', (Get-ShrinkCommand '20'))
 $cmdKey.Close()
 $shellKey.Close()
 
@@ -130,7 +144,7 @@ if ($null -eq $optionsInitialized -and $existingOptionKeyNames.Count -eq 0) {
         $optionKey.SetValue('MUIVerb', "$targetMb MB")
         $optionKey.SetValue('TargetMb', [string]$targetMb)
         $optionCommandKey = $optionKey.CreateSubKey('command')
-        $optionCommandKey.SetValue('', "`"$ExePath`" `"%1`" --targetMb $targetMb")
+        $optionCommandKey.SetValue('', (Get-ShrinkCommand ([string]$targetMb)))
         $optionCommandKey.Close()
         $optionKey.Close()
     }
@@ -141,7 +155,7 @@ $extraKey.SetValue('OptionsInitialized', 1, [Microsoft.Win32.RegistryValueKind]:
 $addCustomKey = $extraShellKey.CreateSubKey('zz_AddCustom')
 $addCustomKey.SetValue('MUIVerb', 'Add custom...')
 $addCustomCommandKey = $addCustomKey.CreateSubKey('command')
-$addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$ManageExtraFileSizeOptionsBatPath`"`"")
+$addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$FileSizeOptionsManagerBatPath`"`"")
 $addCustomCommandKey.Close()
 $addCustomKey.Close()
 

@@ -6,14 +6,22 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $InstallDir = Split-Path -Parent $ScriptDir
 $ExePath = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath = Join-Path $InstallDir 'icon.ico'
-$ManagerBatPath = Join-Path $InstallDir 'manage-extra-filesize-options.bat'
+$FileSizeOptionsManagerBatPath = Join-Path $InstallDir 'filesize-options-manager.bat'
+$ProgressWindowPs1Path = Join-Path $ScriptDir 'progress-window.ps1'
 $ExtraMenuRegistryPath = '*\shell\ShrinkForDiscordExtra'
 $MinimumTargetMb = 0.5
 $InvariantCulture = [System.Globalization.CultureInfo]::InvariantCulture
+$DefaultTargetSizesMb = @('8', '10', '20', '50', '100', '500')
 
 function Write-Step { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok   { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
 function Write-Fail { param($Text) Write-Host "  [!!] $Text" -ForegroundColor Red }
+
+function Get-ShrinkCommand {
+    param([string]$TargetMb)
+
+    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$ProgressWindowPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+}
 
 function New-ActionResult {
     param(
@@ -68,14 +76,6 @@ function Get-ExtraFileSizeOptions {
         try {
             $targetMb = ConvertTo-TargetMb ([string]$optionKey.GetValue('TargetMb'))
 
-            # Support options created by an older installer that did not store TargetMb.
-            if ($null -eq $targetMb) {
-                $label = [string]$optionKey.GetValue('MUIVerb')
-                if ($label -match '^\s*([0-9]+(?:[\.,][0-9]+)?)\s*MB\s*$') {
-                    $targetMb = ConvertTo-TargetMb $Matches[1]
-                }
-            }
-
             if ($null -ne $targetMb) {
                 $targetSizesMb += $targetMb
             }
@@ -104,7 +104,7 @@ function Write-ExtraFileSizeOptions {
         $optionKey.SetValue('MUIVerb', "$targetMb MB")
         $optionKey.SetValue('TargetMb', $targetMb)
         $commandKey = $optionKey.CreateSubKey('command')
-        $commandKey.SetValue('', "`"$ExePath`" `"%1`" --targetMb $targetMb")
+        $commandKey.SetValue('', (Get-ShrinkCommand $targetMb))
         $commandKey.Close()
         $optionKey.Close()
     }
@@ -112,7 +112,7 @@ function Write-ExtraFileSizeOptions {
     $addCustomKey = $ExtraShellKey.CreateSubKey('zz_AddCustom')
     $addCustomKey.SetValue('MUIVerb', 'Add custom...')
     $addCustomCommandKey = $addCustomKey.CreateSubKey('command')
-    $addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$ManagerBatPath`"`"")
+    $addCustomCommandKey.SetValue('', "cmd.exe /d /c `"`"$FileSizeOptionsManagerBatPath`"`"")
     $addCustomCommandKey.Close()
     $addCustomKey.Close()
 }
@@ -207,8 +207,28 @@ function Remove-ExtraFileSizeOption {
     return New-ActionResult "Removed $removedTargetMb MB." $true
 }
 
+function Restore-DefaultExtraFileSizeOptions {
+    param([Microsoft.Win32.RegistryKey]$ExtraShellKey)
+
+    Write-Host ""
+    $confirmation = (Read-Host '  Remove all current options and restore the defaults? (y/N)').Trim()
+    if ($confirmation -ne 'Y') {
+        return New-ActionResult 'Revert canceled; no changes were made.' $true
+    }
+
+    Write-ExtraFileSizeOptions $ExtraShellKey $DefaultTargetSizesMb
+    return New-ActionResult 'Restored the default options: 8, 10, 20, 50, 100, and 500 MB.' $true
+}
+
 if (-not (Test-Path $ExePath)) {
     Write-Fail "$AppName is not installed in $InstallDir."
+    Write-Host ""
+    Read-Host '  Press Enter to exit'
+    exit 1
+}
+
+if (-not (Test-Path $ProgressWindowPs1Path)) {
+    Write-Fail "The progress window script is missing from $ScriptDir. Reinstall $AppName."
     Write-Host ""
     Read-Host '  Press Enter to exit'
     exit 1
@@ -240,8 +260,8 @@ try {
     while ($true) {
         Clear-Host
         Write-Host ""
-        Write-Host "  DiscordShrinker Extra Size Options" -ForegroundColor White
-        Write-Host "  ----------------------------------" -ForegroundColor DarkGray
+        Write-Host "  DiscordShrinker File Size Options Manager" -ForegroundColor White
+        Write-Host "  -------------------------------------------" -ForegroundColor DarkGray
 
         if ($null -ne $lastAction) {
             Write-Host ""
@@ -257,6 +277,7 @@ try {
         Write-Host ""
         Write-Host "    A. Add a custom size"
         Write-Host "    R. Remove a size"
+        Write-Host "    D. Revert to defaults"
         Write-Host "    Q. Exit"
         Write-Host ""
 
@@ -265,8 +286,9 @@ try {
         switch ($action) {
             'A' { $lastAction = Add-ExtraFileSizeOption $extraShellKey $currentOptions }
             'R' { $lastAction = Remove-ExtraFileSizeOption $extraShellKey $currentOptions }
+            'D' { $lastAction = Restore-DefaultExtraFileSizeOptions $extraShellKey }
             'Q' { break }
-            default { $lastAction = New-ActionResult 'Choose A, R, or Q.' $false }
+            default { $lastAction = New-ActionResult 'Choose A, R, D, or Q.' $false }
         }
 
         if ($action -eq 'Q') {
