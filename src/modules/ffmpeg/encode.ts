@@ -112,7 +112,7 @@ async function twoPassEncode(options: TwoPassEncodeOptions): Promise<void> {
 
   try {
     const attemptSuffix = options.attemptNumber && options.attemptNumber > 1
-      ? ` [attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES}]`
+      ? ` (attempt ${options.attemptNumber} of ${MAX_TWO_PASS_RETRIES})`
       : ''
 
     reportStage(`Encoding video - Pass 1 of 2 (Analyze)${attemptSuffix}`, true)
