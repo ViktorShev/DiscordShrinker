@@ -7,7 +7,7 @@ $InstallDir = Split-Path -Parent $ScriptDir
 $ExePath = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath = Join-Path $InstallDir 'icon.ico'
 $FileSizeOptionsManagerBatPath = Join-Path $InstallDir 'filesize-options-manager.bat'
-$ProgressWindowPs1Path = Join-Path $ScriptDir 'progress-window.ps1'
+$GuiPs1Path = Join-Path $ScriptDir 'gui.ps1'
 $ExtraMenuRegistryPath = '*\shell\ShrinkForDiscordExtra'
 $MinimumTargetMb = 0.5
 $InvariantCulture = [System.Globalization.CultureInfo]::InvariantCulture
@@ -20,7 +20,7 @@ function Write-Fail { param($Text) Write-Host "  [!!] $Text" -ForegroundColor Re
 function Get-ShrinkCommand {
     param([string]$TargetMb)
 
-    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$ProgressWindowPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
 }
 
 function New-ActionResult {
@@ -227,8 +227,8 @@ if (-not (Test-Path $ExePath)) {
     exit 1
 }
 
-if (-not (Test-Path $ProgressWindowPs1Path)) {
-    Write-Fail "The progress window script is missing from $ScriptDir. Reinstall $AppName."
+if (-not (Test-Path $GuiPs1Path)) {
+    Write-Fail "The GUI script is missing from $ScriptDir. Reinstall $AppName."
     Write-Host ""
     Read-Host '  Press Enter to exit'
     exit 1

@@ -28,7 +28,7 @@ Compresses video files to a configurable target size. Designed for sharing gamin
    - `scripts/install.ps1`
    - `scripts/uninstall.ps1`
    - `scripts/filesize-options-manager.ps1`
-   - `scripts/progress-window.ps1`
+   - `scripts/gui.ps1`
 2. Double-click **`install.bat`**
 
 The installer will:
@@ -72,7 +72,8 @@ Command-line runs default to verbose terminal output with live FFmpeg progress. 
 
 ```bash
 bun install
-bun run compile   # produces DiscordShrinker.exe
+bun run compile   # produces dist/DiscordShrinker.exe
+bun run bundle    # compiles and assembles the distributable release/ folder
 ```
 
 To run without compiling:

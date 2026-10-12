@@ -11,6 +11,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile dist/DiscordShrinker && bun set-icon.js"
+    "compile": "bun build --compile --minify --sourcemap=none src/index.ts --outfile dist/DiscordShrinker && bun set-icon.js",
+    "bundle": "bun run compile && bun bundle.ts"
   }
 }

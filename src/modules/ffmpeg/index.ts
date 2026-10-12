@@ -58,7 +58,7 @@ async function handleTwoPassOnlyStrategy(metadata: MediaMetadata, maxFileSizeInB
     inputFilePath,
     outputFilePath,
     maxFileSizeInBytes,
-    durationSeconds: metadata.durationSeconds,
+    videoDurationSeconds: metadata.durationSeconds,
     targetAudioBitrate,
     targetVideoBitrate,
     removeAudio: !metadata.hasAudio,
@@ -77,7 +77,7 @@ async function handleDownscaleTwoPassStrategy(metadata: MediaMetadata, maxFileSi
     outputFilePath,
     targetWidth,
     targetHeight,
-    durationSeconds: metadata.durationSeconds,
+    videoDurationSeconds: metadata.durationSeconds,
   })
 
   if (await isFileUnderLimit(outputFilePath, maxFileSizeInBytes)) {
@@ -98,7 +98,7 @@ async function handleDownscaleTwoPassStrategy(metadata: MediaMetadata, maxFileSi
       inputFilePath,
       outputFilePath,
       maxFileSizeInBytes,
-      durationSeconds: metadata.durationSeconds,
+      videoDurationSeconds: metadata.durationSeconds,
       targetAudioBitrate,
       targetVideoBitrate,
       targetResolution: { width: targetWidth, height: targetHeight },
@@ -130,7 +130,7 @@ async function handleDownscaleTwoPassStrategy(metadata: MediaMetadata, maxFileSi
       inputFilePath,
       outputFilePath,
       maxFileSizeInBytes,
-      durationSeconds: metadata.durationSeconds,
+      videoDurationSeconds: metadata.durationSeconds,
       targetAudioBitrate,
       targetVideoBitrate,
       targetResolution: { width: targetWidth, height: targetHeight },

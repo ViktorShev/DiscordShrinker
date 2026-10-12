@@ -11,7 +11,7 @@ $UninstallBatSource = Join-Path $RootDir 'uninstall.bat'
 $UninstallPs1Source = Join-Path $ScriptDir 'uninstall.ps1'
 $FileSizeOptionsManagerBatSource = Join-Path $RootDir 'filesize-options-manager.bat'
 $FileSizeOptionsManagerPs1Source = Join-Path $ScriptDir 'filesize-options-manager.ps1'
-$ProgressWindowPs1Source = Join-Path $ScriptDir 'progress-window.ps1'
+$GuiPs1Source = Join-Path $ScriptDir 'gui.ps1'
 
 function Write-Step  { param($Text) Write-Host "  > $Text" -ForegroundColor Cyan }
 function Write-Ok    { param($Text) Write-Host "  [OK] $Text" -ForegroundColor Green }
@@ -55,8 +55,8 @@ if (-not (Test-Path $FileSizeOptionsManagerPs1Source)) {
     exit 1
 }
 
-if (-not (Test-Path $ProgressWindowPs1Source)) {
-    Write-Fail "scripts\progress-window.ps1 not found next to the install script."
+if (-not (Test-Path $GuiPs1Source)) {
+    Write-Fail "scripts\gui.ps1 not found next to the install script."
     exit 1
 }
 
@@ -97,17 +97,17 @@ Copy-Item -Path $UninstallBatSource -Destination $InstallDir -Force
 Copy-Item -Path $UninstallPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 Copy-Item -Path $FileSizeOptionsManagerBatSource -Destination $InstallDir -Force
 Copy-Item -Path $FileSizeOptionsManagerPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
-Copy-Item -Path $ProgressWindowPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
+Copy-Item -Path $GuiPs1Source -Destination (Join-Path $InstallDir 'scripts') -Force
 
 $ExePath                            = Join-Path $InstallDir 'DiscordShrinker.exe'
 $IconPath                           = Join-Path $InstallDir 'icon.ico'
 $FileSizeOptionsManagerBatPath     = Join-Path $InstallDir 'filesize-options-manager.bat'
-$ProgressWindowPs1Path             = Join-Path $InstallDir 'scripts\progress-window.ps1'
+$GuiPs1Path                        = Join-Path $InstallDir 'scripts\gui.ps1'
 
 function Get-ShrinkCommand {
     param([string]$TargetMb)
 
-    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$ProgressWindowPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
+    return "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$GuiPs1Path`" -FilePath `"%1`" -TargetMb $TargetMb"
 }
 
 Write-Ok "Files copied."

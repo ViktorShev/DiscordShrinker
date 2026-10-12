@@ -1,5 +1,5 @@
 import { getCLIArgs } from "./modules/cli"
-import { isDebugEnabled, setDebugEnabled } from "./modules/log"
+import { setDebugEnabled } from "./modules/log"
 
 import { BYTES_PER_MB, MAX_FILE_SIZE_IN_BYTES_FREE, MAX_FILE_SIZE_IN_MB_FREE } from "./constants"
 
