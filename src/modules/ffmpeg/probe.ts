@@ -1,5 +1,4 @@
 import { stat } from "fs/promises"
-import { MAX_FILE_SIZE_IN_BYTES } from "../../constants"
 import { debug } from "../log"
 import { MAX_AUDIO_BITRATE } from "./encode"
 import { safeNumber } from "../misc"
@@ -93,8 +92,8 @@ export async function probeMedia(filePath: string): Promise<MediaMetadata> {
   return metadata
 }
 
-export async function isFileUnderLimit(filePath: string): Promise<boolean> {
+export async function isFileUnderLimit(filePath: string, maxFileSizeInBytes: number): Promise<boolean> {
   const fileStats = await stat(filePath)
 
-  return fileStats.size <= MAX_FILE_SIZE_IN_BYTES
+  return fileStats.size <= maxFileSizeInBytes
 }

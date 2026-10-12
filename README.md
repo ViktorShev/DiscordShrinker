@@ -1,16 +1,17 @@
 # DiscordShrinker
 
-Compresses video files to fit within Discord's 20 MB file size limit. Designed for gaming clips and screen recordings.
+Compresses video files to a configurable target size. Designed for sharing gaming clips and screen recordings on Discord.
 
 ## Features
 
-- Targets just under 20 MB while preserving as much quality as possible
+- Targets just under Discord's 20 MB free upload limit by default while preserving as much quality as possible
+- Supports custom target sizes through the `--targetMb` command-line option
 - Uses **AV1** video encoding (`libsvtav1`) and **Opus** audio encoding (`libopus`) for best quality at low bitrates
 - Automatically picks a compression strategy based on the video:
   - Short clips (≤ 30s) or already small resolution → two-pass bitrate encoding
   - Longer / high-res videos → downscales to 720p, then two-pass encodes, then reduces FPS to 30 as a last resort if needed (which will probably never happen)
 - Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
-- Skips compression entirely if the file is already under 20 MB
+- Skips compression entirely if the file is already under the selected target size
 - Output file is saved as `<original name>_shrunk.mp4` next to the original
 
 ## Installation (Windows)
@@ -27,7 +28,8 @@ Compresses video files to fit within Discord's 20 MB file size limit. Designed f
 The installer will:
 - Install **FFmpeg** via `winget` if it isn't already on your system
 - Copy the app to `%LOCALAPPDATA%\DiscordShrinker\`
-- Add a **"Shrink for Discord"** entry to the right-click context menu for all files
+- Add a **"Shrink for Discord"** entry targeting 20 MB to the right-click context menu for all files
+- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets
 
 > The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
 
@@ -37,18 +39,21 @@ To uninstall, double-click **`uninstall.bat`**.
 
 ### Right-click menu
 
-Right-click any video file → **Show more options** → **Shrink for Discord**.
+Right-click any video file → **Show more options** → **Shrink for Discord**. This uses Discord's 20 MB free upload limit.
+
+For another target, open **Shrink For Discord Extra** and choose 8, 10, 20, 50, 100, or 500 MB.
 
 A terminal window will open, show progress, and close when done. The compressed file appears next to the original.
 
 ### Command line
 
 ```
-DiscordShrinker.exe <file-path> [--debug]
+DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--debug]
 ```
 
 | Flag | Description |
 |---|---|
+| `--targetMb <megabytes>` | Set the maximum output file size in MiB (defaults to 20) |
 | `--debug` | Print verbose FFmpeg output and internal logs |
 
 ## Building from source

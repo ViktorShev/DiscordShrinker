@@ -1,5 +1,5 @@
 import { basename, dirname, extname, join } from "path"
-import { MAX_FILE_SIZE_IN_BYTES, NULL_DEVICE_PATH, TARGET_FILE_SIZE_IN_BYTES } from "../../constants"
+import { METADATA_OVERHEAD_IN_BYTES, NULL_DEVICE_PATH } from "../../constants"
 import { debug } from "../log"
 import { spin } from "../spinner"
 import { mkdtemp, rm, stat } from "fs/promises"
@@ -8,14 +8,15 @@ import { ffmpeg } from "../cmd"
 import { safeNumber } from "../misc"
 import { isFileUnderLimit } from "./probe"
 
-export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number): number {
-	const maxBitrate = (TARGET_FILE_SIZE_IN_BYTES * 8) / durationSeconds - audioBitrate
+export function TARGET_VIDEO_BITRATE(durationSeconds: number, audioBitrate: number, maxFileSizeInBytes: number): number {
+	const targetFileSizeInBytes = maxFileSizeInBytes - METADATA_OVERHEAD_IN_BYTES
+	const maxBitrate = (targetFileSizeInBytes * 8) / durationSeconds - audioBitrate
 
   return Math.floor(maxBitrate * 0.95) // Reduce target bitrate by 5% as a safety margin for bitrate fluctuations
 }
 
-function RETRY_TARGET_VIDEO_BITRATE(previousBitrate: number, actualSizeBytes: number): number {
-  return Math.floor(previousBitrate * (MAX_FILE_SIZE_IN_BYTES / actualSizeBytes) * 0.98) // Scale bitrate proportionally to how far over the limit we landed, then apply an extra 2% safety margin
+function RETRY_TARGET_VIDEO_BITRATE(previousBitrate: number, actualSizeBytes: number, maxFileSizeInBytes: number): number {
+  return Math.floor(previousBitrate * (maxFileSizeInBytes / actualSizeBytes) * 0.98) // Scale bitrate proportionally to how far over the limit we landed, then apply an extra 2% safety margin
 }
 
 export const MIN_FPS = 30
@@ -62,6 +63,7 @@ async function createTempDirectory(): Promise<string> {
 type TwoPassEncodeOptions = {
   inputFilePath: string
   outputFilePath: string
+  maxFileSizeInBytes: number
   targetVideoBitrate: number
   targetAudioBitrate: number
   targetResolution?: { width: number, height: number }
@@ -166,14 +168,14 @@ export async function twoPassEncodeUntilUnderLimit(options: TwoPassEncodeOptions
 
     await twoPassEncode(adjustedOptions)
 
-    if (await isFileUnderLimit(adjustedOptions.outputFilePath)) {
+    if (await isFileUnderLimit(adjustedOptions.outputFilePath, options.maxFileSizeInBytes)) {
       debug(`Successfully compressed video under file size limit on two-pass attempt: ${attempt}`)
       return
     }
 
     const { size: actualSizeBytes } = await stat(adjustedOptions.outputFilePath)
 
-    targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes)
+    targetVideoBitrate = RETRY_TARGET_VIDEO_BITRATE(targetVideoBitrate, actualSizeBytes, options.maxFileSizeInBytes)
 
     debug(`Two-pass attempt ${attempt} produced ${actualSizeBytes} bytes. Retrying with adjusted video bitrate: ${targetVideoBitrate}`)
   }

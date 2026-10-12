@@ -85,7 +85,7 @@ Write-Ok "Files copied."
 
 # Register right-click context menu
 
-Write-Step "Adding 'Shrink for Discord' to the right-click menu..."
+Write-Step "Adding DiscordShrinker options to the right-click menu..."
 
 $classesKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Classes', $true)
 $shellKey    = $classesKey.CreateSubKey('*\shell\ShrinkForDiscord')
@@ -95,15 +95,38 @@ $cmdKey = $shellKey.CreateSubKey('command')
 $cmdKey.SetValue('', "`"$ExePath`" `"%1`"")
 $cmdKey.Close()
 $shellKey.Close()
+
+$extraKey = $classesKey.CreateSubKey('*\shell\ShrinkForDiscordExtra')
+$extraKey.SetValue('MUIVerb', 'Shrink For Discord Extra')
+$extraKey.SetValue('Icon', $IconPath)
+$extraKey.SetValue('SubCommands', '')
+$extraShellKey = $extraKey.CreateSubKey('shell')
+
+$targetSizesMb = @(8, 10, 20, 50, 100, 500)
+
+for ($index = 0; $index -lt $targetSizesMb.Count; $index++) {
+    $targetMb = $targetSizesMb[$index]
+    $optionKeyName = '{0:D2}_{1}MB' -f ($index + 1), $targetMb
+    $optionKey = $extraShellKey.CreateSubKey($optionKeyName)
+    $optionKey.SetValue('MUIVerb', "$targetMb MB")
+    $optionCommandKey = $optionKey.CreateSubKey('command')
+    $optionCommandKey.SetValue('', "`"$ExePath`" `"%1`" --targetMb $targetMb")
+    $optionCommandKey.Close()
+    $optionKey.Close()
+}
+
+$extraShellKey.Close()
+$extraKey.Close()
 $classesKey.Close()
 
-Write-Ok "Context menu entry registered."
+Write-Ok "Context menu entries registered."
 
 # Done
 
 Write-Host ""
 Write-Host "  All done! Right-click any video file and choose" -ForegroundColor White
 Write-Host "  'Shrink for Discord' to compress it." -ForegroundColor White
+Write-Host "  Use 'Shrink For Discord Extra' for another target size." -ForegroundColor White
 Write-Host ""
 Write-Host "  Note: You can now delete these installation files if you wish." -ForegroundColor DarkGray
 Write-Host ""
