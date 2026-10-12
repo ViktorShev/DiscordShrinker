@@ -1,57 +1,30 @@
 # DiscordShrinker
 
-Compresses video files to a configurable target size. Designed for sharing gaming clips and screen recordings on Discord.
+DiscordShrinker compresses videos to a size you can upload to Discord. It adds a right-click menu to Windows and targets the 20mb free limit by default (as of writing).
 
-## Features
+It keeps the original resolution when it can. For tighter size limits, it scales 4K video to 1080p or 1080p video to 720p. Determined via a relation between bitrate, resolution and FPS.
 
-- Targets just under Discord's 20 MB free upload limit by default while preserving as much quality as possible
-- Supports custom target sizes through the `--targetMb` command-line option
-- Uses **AV1** video encoding (`libsvtav1`) and **Opus** audio encoding (`libopus`) for best quality at low bitrates
-- Automatically picks a compression strategy based on the target size, duration, resolution, and FPS:
-  - Videos with enough target bitrate for their pixel rate → two-pass encoding at the original resolution
-  - Constrained 4K-or-higher videos → downscales to 1080p before two-pass encoding
-  - Other constrained high-res videos → downscales to 720p before two-pass encoding
-  - Reduces FPS to 30 as a last resort if the selected strategy still exceeds the target (which will probably never happen)
-- Up to 3 retry attempts with adjusted bitrates if the output overshoots the limit
-- Skips compression entirely if the file is already under the selected target size
-- Shows compression progress in a compact native Windows window for context-menu runs, with verbose logs and live FFmpeg output for terminal runs
-- Output file is saved as `<original name>_shrunk.mp4` next to the original
+The compressed copy is saved next to the original as `<name>_shrunk.mp4`.
 
-## Installation (Windows)
+For a detailed explanation of all the features and technical breakdown, see [How DiscordShrinker works](docs/how-it-works.md).
 
-1. Download the latest release - it contains:
-   - `DiscordShrinker.exe`
-   - `install.bat` (proxy to execute the .ps1 script)
-   - `uninstall.bat` (also a proxy)
-   - `extras-manager.bat` (proxy for managing context-menu options)
-   - `assets/icon.ico`
-   - `scripts/install.ps1`
-   - `scripts/uninstall.ps1`
-   - `scripts/extras-manager.ps1`
-   - `scripts/gui.ps1`
-2. Double-click **`install.bat`**
+## Installation
 
-The installer will:
-- Install **FFmpeg** via `winget` if it isn't already on your system
-- Copy the app to `%LOCALAPPDATA%\DiscordShrinker\`
-- Add a **"Shrink for Discord"** entry targeting 20 MB to the right-click context menu for all files
-- Add a **"Shrink For Discord Extra"** submenu with 8, 10, 20, 50, 100, and 500 MB targets plus a **"Customize..."** extras manager
+Download and extract the [latest release](https://github.com/ViktorShev/DiscordShrinker/releases), then run `install.bat`.
 
-> The context menu entry appears under **Show more options** in the Windows 11 right-click menu.
+The installer copies DiscordShrinker to `%LOCALAPPDATA%\DiscordShrinker`, adds the right-click menu, and installs FFmpeg through `winget` if it is missing (uses your local FFmpeg installation instead if present).
 
-To uninstall, double-click **`uninstall.bat`**.
+On Windows 11, the shrinker's menu is under **Show more options**.
 
 ## Usage
 
-### Right-click menu
+Right-click any video and click on **Shrink for Discord** to target the default free limit.
 
-Right-click any video file → **Show more options** → **Shrink for Discord**. This uses Discord's 20 MB free upload limit.
+If you want to target a different limit, hover over **Shrink For Discord Extra**, it will open a submenu with the default options of 8, 10, 20, 50, 100, and 500mb.
 
-For another target, open **Shrink For Discord Extra** and choose 8, 10, 20, 50, 100, or 500 MB.
+There is also the **Customize...** option, used to add or remove limits, restore the defaults, or switch context-menu executions between the progress window and debug terminal output.
 
-Choose **Customize...** at the bottom of that submenu to manage all extra options. You can add a target at any menu position, remove any target, restore the default 8, 10, 20, 50, 100, and 500 MB list, or disable the GUI so context-menu compression runs with debug terminal output. New targets are added at the bottom unless you enter another position; **Customize...** always remains last.
-
-A small native Windows progress window opens while the video is processed and closes shortly after a successful result. Errors remain visible until dismissed. The compressed file appears next to the original.
+Files that are already below the limit are not processed.
 
 ### Command line
 
@@ -61,23 +34,29 @@ DiscordShrinker.exe <file-path> [--targetMb <megabytes>] [--gui <progress-file>]
 
 | Flag | Description |
 |---|---|
-| `--targetMb <megabytes>` | Set the maximum output file size in MiB (defaults to 20) |
-| `--gui <progress-file>` | Run as the native window's hidden worker and write JSON-lines progress events to the supplied file |
+| `--targetMb <megabytes>` | Set the maximum output file size in MB (defaults to 20) |
+| `--gui <progress-file>` | Writes JSONL progress events to the supplied file and disables terminal debug output. Used by the Windows Forms progress window when launching its worker process. |
 
-Command-line runs default to verbose terminal output with live FFmpeg progress. The installed right-click menu launches the native progress window, which supplies `--gui` when starting its hidden worker.
+Command-line execution shows FFmpeg progress and debug output in the terminal by default.
+
+Context-menu execution is set up to automatically provide the `--gui` flag.
 
 ## Building from source
 
-**Requirements:** [Bun](https://bun.sh), [FFmpeg](https://ffmpeg.org)
+Requires [Bun](https://bun.sh) and [FFmpeg](https://ffmpeg.org).
 
 ```bash
 bun install
-bun run compile   # produces dist/DiscordShrinker.exe
-bun run bundle    # compiles and assembles the distributable release/ folder
+bun run compile
+bun run bundle
 ```
 
-To run without compiling:
+To run from source without compiling
 
 ```bash
-bun run src/index.ts <file-path>
+bun src/index.ts <file-path> [--targetMb <megabytes>]
 ```
+
+## Uninstalling
+
+Run `uninstall.bat` found in the installation folder.

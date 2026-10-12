@@ -7,6 +7,7 @@ const releaseDirectory = join(projectDirectory, 'release')
 const releaseFiles = [
   ['dist/DiscordShrinker.exe', 'DiscordShrinker.exe'],
   ['README.md', 'README.md'],
+  ['docs/how-it-works.md', 'docs/how-it-works.md'],
   ['assets/icon.ico', 'assets/icon.ico'],
   ['scripts/proxies/install.bat', 'install.bat'],
   ['scripts/proxies/uninstall.bat', 'uninstall.bat'],
